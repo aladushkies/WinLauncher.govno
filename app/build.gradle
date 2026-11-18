@@ -1,0 +1,28 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'ru.winlauncher'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ru.winlauncher'
+        minSdk 25
+        // API 25 target intentionally preserves the Android 7.1 overlay behavior during MVP.
+        targetSdk 25
+        versionCode 1
+        versionName '0.1-root-core'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debug { minifyEnabled false }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
