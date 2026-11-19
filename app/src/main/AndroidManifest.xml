@@ -1,10 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.GET_TASKS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <application
         android:allowBackup="false"
         android:label="WinLauncher Root Core"
         android:theme="@style/AppTheme">
+        <activity
+            android:name="ru.winlauncher.DesktopActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:label="WinLauncher Desktop">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <activity
             android:name="ru.winlauncher.MainActivity"
             android:exported="true">
@@ -13,5 +28,31 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name="ru.winlauncher.LauncherSettingsActivity" android:exported="false" />
+        <activity android:name="ru.winlauncher.EdgeLiteActivity" android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation" android:exported="false" />
+        <activity android:name="ru.winlauncher.TaskManagerActivity" android:exported="false" />
+        <service
+            android:name="ru.winlauncher.DockService"
+            android:exported="false" />
+        <service
+            android:name="ru.winlauncher.KeyService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/key_service_config" />
+        </service>
+        <service
+            android:name="ru.winlauncher.LauncherNotificationListener"
+            android:label="WinLauncher notifications"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
     </application>
 </manifest>

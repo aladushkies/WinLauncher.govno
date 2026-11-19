@@ -12,11 +12,18 @@ public final class Win {
     public String title;
     public int stackId;
     public int z;
+    public int desktopId;
     public boolean visible;
     public State state = State.NORMAL;
     public State stateBeforeMinimize = State.NORMAL;
-    public final Rect bounds = new Rect();
+    public final Rect bounds = new Rect(); // last RootServer-confirmed bounds
+    public final Rect requestedBounds = new Rect(); // latest drag target, awaiting confirmation
     public final Rect normalBounds = new Rect();
+    public final Rect minimizeRestoreBounds = new Rect();
+    public long resizeSequence;
+    public long operationSequence;
+    public String snapGroupId;
+    public int snapCell = -1;
 
     public Win(int taskId) { this.taskId = taskId; }
 

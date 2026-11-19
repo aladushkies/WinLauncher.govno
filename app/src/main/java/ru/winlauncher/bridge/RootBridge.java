@@ -25,7 +25,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class RootBridge implements Closeable {
     public interface Callback { void onResult(JSONObject result); }
 
-    private static final int MAX_LINE = 64 * 1024;
+    private static final int MAX_LINE = 512 * 1024;
+    private static final int IO_TIMEOUT_MS = 4000; // S2: a hung RootServer must not stall the worker forever
     private final String socketName;
     private final String token;
     private final int uid;
@@ -51,6 +52,20 @@ public final class RootBridge implements Closeable {
 
     public void ping(Callback callback) { send("ping", new JSONObject(), null, callback); }
     public void tasks(Callback callback) { send("tasks", new JSONObject(), null, callback); }
+    public void setStatusBarHidden(boolean hidden, Callback callback) {
+        JSONObject p = new JSONObject(); try { p.put("hide", hidden); } catch (JSONException ignored) { }
+        send("status", p, null, callback);
+    }
+    public void enableAccessibility(Callback callback) { send("accessibility",new JSONObject(),null,callback); }
+    public void captureScreenshot(Callback callback) { send("capture",new JSONObject(),null,callback); }
+    public void deviceAction(String action,boolean enabled,Callback callback) {
+        JSONObject p=new JSONObject();try{p.put("a",action).put("v",enabled);}catch(JSONException ignored){}
+        send("device",p,null,callback);
+    }
+    public void deviceState(String action,Callback callback) {
+        JSONObject p=new JSONObject();try{p.put("a",action);}catch(JSONException ignored){}
+        send("device_state",p,null,callback);
+    }
     public void resize(int taskId, int left, int top, int right, int bottom, int mode, Callback callback) {
         JSONObject p = new JSONObject();
         try { p.put("t", taskId).put("r", new JSONArray().put(left).put(top).put(right).put(bottom)).put("m", mode); }
@@ -74,16 +89,18 @@ public final class RootBridge implements Closeable {
     private void send(String command, JSONObject payload, String coalesceKey, Callback callback) {
         if (closed) { deliver(callback, error("bridge closed")); return; }
         Request request = new Request(ids.getAndIncrement(), command, payload, coalesceKey, callback);
+        Request superseded = null;
         synchronized (lock) {
             if (coalesceKey != null) {
                 Iterator<Request> it = queue.iterator();
                 while (it.hasNext()) {
                     Request old = it.next();
-                    if (coalesceKey.equals(old.coalesceKey)) { it.remove(); break; }
+                    if (coalesceKey.equals(old.coalesceKey)) { superseded = old; it.remove(); break; }
                 }
             }
             queue.addLast(request);
         }
+        if (superseded != null) deliver(superseded.callback, error("superseded by newer resize"));
         worker.removeCallbacks(drain);
         worker.post(drain);
     }
@@ -94,38 +111,121 @@ public final class RootBridge implements Closeable {
                 Request r;
                 synchronized (lock) { r = queue.pollFirst(); }
                 if (r == null) return;
-                JSONObject result;
-                try {
-                    ensureConnected();
-                    JSONObject wire = new JSONObject().put("id", r.id).put("c", r.command);
-                    for (Iterator<String> it = r.payload.keys(); it.hasNext();) {
-                        String k = it.next(); wire.put(k, r.payload.get(k));
-                    }
-                    writer.write(wire.toString()); writer.write('\n'); writer.flush();
-                    String line = readLine(reader);
-                    if (line == null) throw new IOException("RootServer disconnected");
-                    result = new JSONObject(line);
-                    if (!result.optBoolean("ok", false)) throw new IOException(result.optString("error", "request failed"));
-                } catch (Throwable t) {
-                    disconnect(); result = error(t.getClass().getSimpleName() + ": " + t.getMessage());
-                }
-                deliver(r.callback, result);
+                deliver(r.callback, execute(r));
             }
         }
     };
 
+    /** D-05: matches the response id to the request id (skipping late answers to timed-out
+     *  requests), always drops the socket on any failure so a stale response can never be read
+     *  as the next command's answer, and retries an idempotent read command exactly once after
+     *  reconnecting — the server closes sessions idle for 120 s, so the first command after a
+     *  pause used to fail with "RootServer disconnected". Commands with side effects
+     *  (resize/stack/close/device/status) are never retried automatically. */
+    private JSONObject execute(Request r) {
+        boolean idempotent = "ping".equals(r.command) || "tasks".equals(r.command)
+                || "device_state".equals(r.command);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                ensureConnected();
+                JSONObject wire = new JSONObject().put("id", r.id).put("c", r.command);
+                for (Iterator<String> it = r.payload.keys(); it.hasNext();) {
+                    String k = it.next(); wire.put(k, r.payload.get(k));
+                }
+                writer.write(wire.toString()); writer.write('\n'); writer.flush();
+                JSONObject parsed = null;
+                for (int skipped = 0; skipped < 4; skipped++) {
+                    String line = readLine(reader);
+                    if (line == null) throw new IOException("RootServer disconnected");
+                    parsed = new JSONObject(line);
+                    // BUG-14: a protocol-level error frame (id -1, ok false) belongs to no
+                    // request; return it at once instead of waiting out the 4 s timeout.
+                    if (parsed.optLong("id", -1) == -1 && !parsed.optBoolean("ok", true)) return parsed;
+                    if (parsed.optLong("id", -1) == r.id) break;
+                    parsed = null; // late answer to an earlier request: skip it
+                }
+                if (parsed == null) throw new IOException("response id mismatch");
+                return parsed;
+            } catch (Throwable t) {
+                disconnect();
+                if (attempt == 0 && idempotent) continue;
+                return error(t instanceof java.net.SocketTimeoutException
+                        ? "timeout"
+                        : t.getClass().getSimpleName() + ": " + t.getMessage());
+            }
+        }
+        return error("unreachable");
+    }
+
     private void ensureConnected() throws Exception {
         if (socket != null && socket.isConnected()) return;
         LocalSocket s = new LocalSocket();
-        s.connect(new LocalSocketAddress(socketName, LocalSocketAddress.Namespace.ABSTRACT));
-        BufferedReader in = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
-        BufferedWriter out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8));
-        out.write(new JSONObject().put("token", token).put("uid", uid).toString()); out.write('\n'); out.flush();
-        String hello = readLine(in);
-        if (hello == null) { s.close(); throw new IOException("empty handshake"); }
-        JSONObject response = new JSONObject(hello);
-        if (!response.optBoolean("ready", false)) { s.close(); throw new IOException(response.optString("error", "auth failed")); }
+        BufferedReader in;
+        BufferedWriter out;
+        // BUG-14: the socket field is only assigned after a successful handshake, so a failure
+        // mid-handshake used to leak the local socket. Close it on any failure path.
+        try {
+            s.setSoTimeout(IO_TIMEOUT_MS);
+            s.connect(new LocalSocketAddress(socketName, LocalSocketAddress.Namespace.ABSTRACT));
+            in = new BufferedReader(new InputStreamReader(s.getInputStream(), StandardCharsets.UTF_8));
+            out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream(), StandardCharsets.UTF_8));
+            String nonce = newNonce();
+            JSONObject helloMessage = new JSONObject().put("uid", uid).put("nonce", nonce)
+                    .put("token", clientProof(token, nonce));
+            out.write(helloMessage.toString()); out.write('\n'); out.flush();
+            String hello = readLine(in);
+            if (hello == null) throw new IOException("empty handshake");
+            JSONObject response = new JSONObject(hello);
+            // S15: mutual authentication. An impostor bound to the same socket name cannot produce the
+            // token-bound proof, so a hostile app_process cannot impersonate root and drive the model.
+            if (!response.optBoolean("ready", false)
+                    || !constantTimeEquals(response.optString("proof", ""), serverProof(token, nonce))) {
+                throw new IOException(response.optString("error", "handshake rejected"));
+            }
+        } catch (Throwable t) {
+            try { s.close(); } catch (IOException ignored) { }
+            if (t instanceof Exception) throw (Exception) t;
+            throw new IOException(String.valueOf(t));
+        }
         socket = s; reader = in; writer = out;
+    }
+
+    // BUG-04: S15 originally used one shared H(token:nonce) in both directions, so any process
+    // that squatted on the socket name could reflect the client's proof back as the server
+    // proof and pass the client check without knowing the token. The two directions now hash
+    // different domain prefixes, so a reflected value never verifies.
+    private static String clientProof(String token, String nonce) {
+        return sha256Hex("client:" + token + ":" + nonce);
+    }
+
+    private static String serverProof(String token, String nonce) {
+        return sha256Hex("server:" + token + ":" + nonce);
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder b = new StringBuilder(64);
+            for (byte x : digest) b.append(String.format(java.util.Locale.US, "%02x", x & 0xff));
+            return b.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static String newNonce() {
+        byte[] bytes = new byte[16];
+        new java.security.SecureRandom().nextBytes(bytes);
+        StringBuilder b = new StringBuilder(32);
+        for (byte x : bytes) b.append(String.format(java.util.Locale.US, "%02x", x & 0xff));
+        return b.toString();
+    }
+
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        return java.security.MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8));
     }
 
     private static String readLine(BufferedReader r) throws IOException {
