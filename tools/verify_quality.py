@@ -3,6 +3,7 @@
 from pathlib import Path
 import re
 import sys
+import importlib.util
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -505,7 +506,10 @@ checks.append(check("D-10: taskbar order is stable by taskId and the clock has a
     "taskbarOrder()" in window and "Comparator.comparingInt(w -> w.taskId)" in window
     and "clockTick" in taskbar and "controller.taskbarOrder()" in taskbar))
 checks.append(check("D-11: airplane mode chains with && and reports the read-back state",
-    'airplane_mode_on "+(enabled?"1":"0")+" &&' in server and 'readDeviceState("airplane")' in server))
+    'airplane_mode_on "+(enabled?"1":"0")+" &&' in server
+    # J-03 widened the read-back to every radio action; the airplane branch is now covered by
+    # the shared readDeviceState(action) call below it.
+    and 'return readDeviceState(action);' in server))
 close_body = window.split("public void close(Win w)", 1)[1].split("moveToStackThenResize", 1)[0]
 checks.append(check("D-12: close() defers model cleanup to adoptTasks, which clears all restore state",
     "refreshTasks(null);" in close_body and "windows.remove" not in close_body
@@ -609,7 +613,8 @@ checks.append(check("BUG-09: fullscreen edges rebuild when the display size chan
     "lastScreenW" in edge and "dm.widthPixels==lastScreenW&&dm.heightPixels==lastScreenH" in edge))
 checks.append(check("BUG-10: snap groups and Assist candidates stay on the current desktop and freeform stack",
     "sameDesktop(candidate,w.desktopId)" in snap and "sameDesktop(Group g, int desktopId)" in snap
-    and "w.desktopId==controller.currentDesktopId()&&w.stackId==2" in snap))
+    # J-04: the freeform stack id is now taken from the controller instead of the literal 2.
+    and "w.desktopId==controller.currentDesktopId()&&w.stackId==controller.freeformStackId()" in snap))
 checks.append(check("BUG-11: Action Center shows the state read back by the server, not the requested one",
     'boolean actual=done.optBoolean("enabled",requested);' in action and 'done.optBoolean("known",true)' in action))
 checks.append(check("BUG-12: shortcuts execute on ACTION_DOWN, swallow ACTION_UP via swallowedKeys, Ctrl+D is exact",
@@ -907,6 +912,74 @@ checks.append(check("I-11: FullscreenEdgeManager centers mini title text vertica
     "title.setGravity(Gravity.CENTER_VERTICAL);" in f_edges))
 checks.append(check("I-12: DockService manifest entry does not carry the activity-only android:configChanges attribute",
     'android:name="ru.winlauncher.DockService"\n            android:exported="false"' in manifest_text))
+
+# 19. Round J — line-by-line debug round (see JFIXES.md).
+f_root_server = (JAVA_ROOT / "root/RootServer.java").read_text(encoding="utf-8")
+f_window = java("WindowController")
+f_chrome = java("ChromeManager")
+f_taskbar = java("TaskbarOverlay")
+f_taskview = java("TaskViewOverlay")
+f_edge_lite = java("EdgeLiteActivity")
+f_prefs = java("LauncherPrefs")
+f_grips = java("ResizeGripManager")
+f_key = java("KeyService")
+checks.append(check("J-01: RootServer resizes through the AOSP boolean overload and falls back to the two-argument form",
+    'invoke(activityManager, "resizeTask", taskId, bounds, Boolean.TRUE);' in f_root_server
+    and 'invoke(activityManager, "resizeTask", taskId, bounds);' in f_root_server
+    and 'j.optInt("m", 0)' not in f_root_server))
+checks.append(check("J-02: task components fall back to StackInfo.tasks[].baseIntent when taskNames is missing",
+    "objectArrayField(stack, \"tasks\")" in f_root_server
+    and "componentOfTaskInfo(taskInfos[i])" in f_root_server
+    and "intent.getPackage()" in f_root_server))
+checks.append(check("J-03: every root radio action reports the state read back, not the requested one",
+    "return readDeviceState(action);" in f_root_server
+    and 'if("airplane".equals(action))return readDeviceState("airplane");' not in f_root_server))
+checks.append(check("J-04: the overlays ask the controller for the freeform stack instead of hardcoding 2",
+    "public int freeformStackId()" in f_window
+    and "w.stackId==controller.freeformStackId()" in f_chrome
+    and "w.stackId!=controller.freeformStackId()" in f_taskbar
+    and "w.stackId==controller.freeformStackId()" in snap
+    and "w.stackId==controller.freeformStackId()" in f_taskview))
+checks.append(check("J-05: Edge Lite detaches every WebView from its parent before destroying it",
+    "((android.view.ViewGroup)tab.web.getParent()).removeView(tab.web);" in f_edge_lite
+    and "tab.web.destroy();" in f_edge_lite))
+checks.append(check("J-06: the persisted task record has exactly one writer format (pipe separated)",
+    "public void setWindowBounds(" not in f_prefs
+    and 'putString("task_"+taskId,left+' not in f_prefs
+    and f_prefs.count('putString("task_"+taskId') == 2
+    and "saveMinimizedState" in f_prefs))
+checks.append(check("J-07: a refused resize grip does not abort the remaining grip update",
+    "grips.remove(direction); continue;" in f_grips))
+checks.append(check("J-08: KeyService reuses one LauncherPrefs instead of allocating one per event",
+    "private LauncherPrefs prefs;" in f_key and "if (prefs == null) prefs = new LauncherPrefs(this);" in f_key))
+
+# The only check that actually proves the sources build. SKIP (not FAIL) when the machine has
+# no JDK or no android.jar, so the static gate stays usable in a bare environment.
+def compile_gate():
+    try:
+        spec = importlib.util.spec_from_file_location("compile_check", ROOT / "tools/compile_check.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.run()
+    except Exception as error:  # pragma: no cover - defensive
+        return 2, f"compile gate unavailable: {error}"
+
+_compile_code, _compile_message = compile_gate()
+if _compile_code == 0:
+    checks.append(check("J-09: every Java source compiles against android.jar (API 35) with a real javac", True))
+    print(f"      {_compile_message}")
+elif _compile_code == 2:
+    print(f"SKIP  J-09: every Java source compiles against android.jar (API 35) with a real javac")
+    print(f"      {_compile_message}")
+    checks.append(True)
+else:
+    checks.append(check("J-09: every Java source compiles against android.jar (API 35) with a real javac", False))
+    print(_compile_message)
+
+checks.append(check("J-10: the source archive is generated on demand and is never tracked by git",
+    not (ROOT / "WinLauncherRoot-audited.zip").exists()
+    and "*.zip" in read(".gitignore")
+    and (ROOT / "tools/make_release.py").exists()))
 
 if not all(checks):
     sys.exit(1)

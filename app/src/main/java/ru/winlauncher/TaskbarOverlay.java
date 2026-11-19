@@ -111,7 +111,7 @@ public final class TaskbarOverlay implements WindowController.Listener {
         LinearLayout tasks=new LinearLayout(context);tasks.setOrientation(LinearLayout.HORIZONTAL);
         for(Win w:windows){
             if(w.state==Win.State.FULLSCREEN&&!temporary)continue;
-            if(w.stackId!=2&&w.state!=Win.State.MINIMIZED&&!(temporary&&w.state==Win.State.FULLSCREEN))continue;
+            if(w.stackId!=controller.freeformStackId()&&w.state!=Win.State.MINIMIZED&&!(temporary&&w.state==Win.State.FULLSCREEN))continue;
             String taskLabel=abbrev(w.title);
             if(w.state==Win.State.MINIMIZED)taskLabel="↗"+taskLabel;
             TextView item=button(taskLabel,taskBtnW);if(w.state==Win.State.MINIMIZED)item.setTextColor(prefs.darkTheme()?0xffb0b0b0:0xff555555);

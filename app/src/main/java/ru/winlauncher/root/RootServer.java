@@ -1,5 +1,7 @@
 package ru.winlauncher.root;
 
+import android.content.ComponentName;
+import android.content.Intent;
 import android.graphics.Rect;
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
@@ -168,7 +170,7 @@ public final class RootServer {
                     if (bounds.left < -100000 || bounds.top < -100000 || bounds.right > 100000 || bounds.bottom > 100000)
                         throw new IllegalArgumentException("resize bounds out of range");
                     int taskId = j.getInt("t");
-                    invoke(activityManager, "resizeTask", taskId, bounds, j.optInt("m", 0));
+                    resizeTask(taskId, bounds);
                     JSONObject response = new JSONObject().put("ok", true);
                     JSONArray actual = findTaskBounds(taskId);
                     if (actual != null) response.put("bounds", actual);
@@ -332,8 +334,16 @@ public final class RootServer {
         int exit=execAndWait(command);
         if(exit!=0)throw new IOException("device action failed: "+action+" exit="+exit);
         // D-11: report the state actually read back, not the requested one.
-        if("airplane".equals(action))return readDeviceState("airplane");
-        return new JSONObject().put("ok",true).put("action",action).put("enabled",enabled);
+        // J-03: that read-back only covered airplane mode. Wi-Fi/Bluetooth/mobile data echoed
+        // the requested flag, so a toggle the firmware silently ignored (vendor `svc`
+        // restrictions, SIM policy) was reported to the Action Center as a success.
+        try {
+            return readDeviceState(action);
+        } catch (Exception unreadable) {
+            // The action itself succeeded; only the verification failed.
+            return new JSONObject().put("ok",true).put("action",action)
+                    .put("known",false).put("enabled",enabled);
+        }
     }
 
     private static JSONArray findTaskBounds(int taskId) throws Exception {
@@ -445,6 +455,22 @@ public final class RootServer {
             throw new IOException("status-bar disable failed: " + safeMessage(binderError), binderError);
     }
 
+    /**
+     * J-01: AOSP 6.0+ declares {@code IActivityManager.resizeTask(int taskId, Rect r, boolean resize)}.
+     * The launcher used to pass the client's "m" flag (0/1, meaning commit vs. live drag) as an
+     * int, so the reflection lookup never matched the boolean overload and every window resize
+     * died with NoSuchMethodException on the tablet. The flag is a launcher-side hint, not the
+     * AOSP "move only" flag, so the task must really be resized: pass {@code true}. Firmware
+     * that still exposes the pre-6.0 two-argument overload is supported as a fallback.
+     */
+    private static void resizeTask(int taskId, Rect bounds) throws Exception {
+        try {
+            invoke(activityManager, "resizeTask", taskId, bounds, Boolean.TRUE);
+        } catch (NoSuchMethodException unsupported) {
+            invoke(activityManager, "resizeTask", taskId, bounds);
+        }
+    }
+
     private static JSONArray snapshotTasks() throws Exception {
         Object value = invoke(activityManager, "getAllStackInfos");
         if (!(value instanceof List)) throw new IllegalStateException("getAllStackInfos did not return a List");
@@ -461,15 +487,24 @@ public final class RootServer {
             int stackId = intField(stack, "stackId", -1);
             int[] taskIds = intArrayField(stack, "taskIds");
             String[] names = stringArrayField(stack, "taskNames");
+            // J-02: StackInfo.taskNames only exists on newer AOSP branches. On the API 25
+            // firmware the field is missing, stringArrayField() returns an empty array and
+            // every task used to report an empty component: no window title, no icon, and
+            // the launcher's own activities were no longer filtered out by package name.
+            // StackInfo.tasks[].baseIntent is present on every supported release, so it is
+            // the authoritative fallback for "package/class".
+            Object[] taskInfos = objectArrayField(stack, "tasks");
             Rect[] bounds = rectArrayField(stack, "taskBounds");
             boolean visible = booleanField(stack, "visible", false);
             for (int i = 0; i < taskIds.length; i++) {
                 Rect b = i < bounds.length && bounds[i] != null ? bounds[i] : new Rect();
                 JSONArray rect = new JSONArray().put(b.left).put(b.top).put(b.right).put(b.bottom);
+                String component = i < names.length && names[i] != null ? names[i] : "";
+                if (component.length() == 0 && i < taskInfos.length) component = componentOfTaskInfo(taskInfos[i]);
                 result.put(new JSONObject()
                         .put("id", taskIds[i])
                         .put("stack", stackId)
-                        .put("component", i < names.length && names[i] != null ? names[i] : "")
+                        .put("component", component)
                         .put("bounds", rect)
                         .put("visible", visible)
                         .put("z", stackRank * 1000 + i));
@@ -582,6 +617,39 @@ public final class RootServer {
     }
     private static String[] stringArrayField(Object o, String name) {
         Object v = field(o, name); return v instanceof String[] ? (String[]) v : new String[0];
+    }
+    /** J-02 helper: reads a List/array field (StackInfo.tasks) into a plain array. */
+    private static Object[] objectArrayField(Object o, String name) {
+        Object v = field(o, name);
+        if (v == null) return new Object[0];
+        if (v instanceof List) return ((List<?>) v).toArray();
+        if (v.getClass().isArray()) {
+            int n = Array.getLength(v);
+            Object[] out = new Object[n];
+            for (int i = 0; i < n; i++) out[i] = Array.get(v, i);
+            return out;
+        }
+        return new Object[0];
+    }
+    /** J-02 helper: "package/class" of a TaskInfo, taken from its base Intent. */
+    private static String componentOfTaskInfo(Object taskInfo) {
+        if (taskInfo == null) return "";
+        try {
+            Object base = field(taskInfo, "baseIntent");
+            if (base instanceof Intent) {
+                Intent intent = (Intent) base;
+                ComponentName component = intent.getComponent();
+                if (component != null) {
+                    String pkg = component.getPackageName();
+                    String cls = component.getClassName();
+                    if (pkg != null && pkg.length() > 0)
+                        return cls != null && cls.length() > 0 ? pkg + "/" + cls : pkg;
+                }
+                String pkg = intent.getPackage();
+                if (pkg != null && pkg.length() > 0) return pkg;
+            }
+        } catch (Throwable ignored) { }
+        return "";
     }
     private static Rect[] rectArrayField(Object o, String name) {
         Object v = field(o, name);

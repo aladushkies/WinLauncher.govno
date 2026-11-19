@@ -28,9 +28,13 @@ public final class KeyService extends AccessibilityService {
     }
 
     private long lastCaptionScan;
+    // J-08: the accessibility callback fires far more often than the caption scan needs.
+    // Building a new LauncherPrefs (and its SharedPreferences lookup) on every event was pure
+    // overhead on the low-memory profile, so the store is created once per service instance.
+    private LauncherPrefs prefs;
 
     @Override public void onAccessibilityEvent(AccessibilityEvent event) {
-        LauncherPrefs prefs = new LauncherPrefs(this);
+        if (prefs == null) prefs = new LauncherPrefs(this);
         if (prefs.isCaptionCalibrated()) return;
         // D-14: walking every window's node tree on every accessibility event is wasteful and
         // risks calibrating from a transient layout. Scan at most once per 1.5 s and only on

@@ -336,7 +336,7 @@ public final class SnapController {
         for(int i=0;i<group.cells.size();i++) if(!group.tasks.containsKey(i)) free.add(i);
         if(free.isEmpty()) return;
         List<Win> candidates=new ArrayList<>();
-        for(Win w:controller.snapshot()) if(!group.tasks.containsValue(w.taskId)&&w.desktopId==controller.currentDesktopId()&&w.stackId==2&&w.state!=Win.State.MINIMIZED&&w.state!=Win.State.FULLSCREEN) candidates.add(w);
+        for(Win w:controller.snapshot()) if(!group.tasks.containsValue(w.taskId)&&w.desktopId==controller.currentDesktopId()&&w.stackId==controller.freeformStackId()&&w.state!=Win.State.MINIMIZED&&w.state!=Win.State.FULLSCREEN) candidates.add(w);
         if(candidates.isEmpty()) return;
         assist=new Assist(group,free,candidates); assist.show();
     }

@@ -97,7 +97,7 @@ public final class TaskViewOverlay {
                 });
                 row.addView(check,new LinearLayout.LayoutParams(dp(48),dp(44)));
                 LinearLayout.LayoutParams rowLp=new LinearLayout.LayoutParams(-1,dp(44));rowLp.bottomMargin=dp(6);list.addView(row,rowLp); // U-03
-            }else if(w.state==Win.State.MINIMIZED||w.stackId==2){
+            }else if(w.state==Win.State.MINIMIZED||w.stackId==controller.freeformStackId()){
                 Button item=new Button(context);item.setText((w.title==null?"Окно":w.title)+"  ·  "+w.state+" · стол "+(w.desktopId+1));styleButton(item,dark);
                 item.setOnClickListener(v->{
                     // M-03: activateWindow switches desktop and restores exactly once.

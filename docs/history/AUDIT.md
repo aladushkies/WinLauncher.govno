@@ -9,7 +9,7 @@ all 23 Java sources plus the root bridge protocol, fixes for the defects found, 
 |---|---|---|
 | File restoration | 36/36 files from 13 parts, no guesswork reconstruction | `python3 tools/verify_quality.py` |
 | Static source checks | 43/43 PASS, exit 0 | `python3 tools/verify_quality.py` |
-| Java compilation | 0 errors, 63 `.class` files (23 top-level + 40 nested/anonymous) | see README "Сборка" and REPORT.md |
+| Java compilation | 0 errors, 63 `.class` files (23 top-level + 40 nested/anonymous) | see README "Сборка" and the round log in `docs/history/` |
 | Gradle/AGP build | **not run** — no Android SDK, no Gradle, no AGP 8.6.1 in the audit sandbox | — |
 | Device/runtime | **not run** — no SM-T555 device, no root | — |
 
@@ -31,7 +31,7 @@ present in the restored sources (they are *not* re-applied by this audit):
 ## Defects found and fixed by this audit
 
 25 code-marked fixes were applied across 16 source files (the full table, with the nine items
-left open and the four withdrawn after analysis, is in REPORT.md). Each fix carries a comment at the
+left open and the four withdrawn after analysis, is kept in the round log in `docs/history/`). Each fix carries a comment at the
 site with its `S<number>` id. Highlights:
 
 - **S1** status-bar retry storm and an over-broad `disable()` mask that also removed Back/Home/Recents.

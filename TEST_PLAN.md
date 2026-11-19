@@ -4,10 +4,10 @@
 
 - **Current state:** tests are defined only; none of the APK, runtime, or device checks below has been run in this workspace.
 - **Target device:** Samsung Galaxy Tab A 9.7 SM‑T555, Android 7.1.1 / API 25, rooted test image; record exact build fingerprint, root manager and density before testing.
-- **Important:** this plan is not a build result. Static source-coherence checks are reported separately by `tools/verify_quality.py` and do not prove Java compilation, hidden-API compatibility, or runtime behavior.
+- **Important:** this plan is not a build result. Static source-coherence checks are reported separately by `tools/verify_quality.py`, and `tools/compile_check.py` proves that all 23 sources compile against `android.jar` (API 35) with a real `javac` (71 class files, 0 errors). Neither of them proves hidden-API compatibility or runtime behavior.
 - **Stage 0 hypotheses:** E‑1…E‑10 below reproduce the supplied TЗ statements and are device experiments, not source implementation claims.
 - **Stage 5:** intentionally excluded because it was explicitly optional. Do not use the optional Stage 5 as a release gate.
-- **Audit pass (2026-11-19):** all sources were statically reviewed and 31 defect classes fixed; see `AUDIT.md` and `REPORT.md`. Static checks now report 43/43 PASS, and a javac 8 compile against an API 28 bootclasspath jar links cleanly (63 class files). This does **not** change any row below: no Gradle/AGP build ran, and no device or runtime case was executed.
+- **Audit passes:** round‑by‑round records live in `docs/history/` (`AUDIT.md`, `FIXES.md` D‑01…14, `BUGFIXES.md`, `WC2FIXES.md`, `RFIXES.md`, `FFIXES.md`, `GFIXES.md`, `HFIXES.md`, `IFIXES.md`, `JFIXES.md`). The latest round J added the compile gate and fixed J‑01…J‑08; static checks now report 169/169 PASS. This does **not** change any row below: no Gradle/AGP build ran, and no device or runtime case was executed.
 
 For every case, perform the listed action, compare with the expected result, then mark one result. Leave both unchecked until actually tested; record build fingerprint, screenshots/logs and failure details in Notes.
 
@@ -25,6 +25,8 @@ For every case, perform the listed action, compare with the expected result, the
 | B-02 | Install that APK on Android 7.1.1 with `adb install -r …`; launch WinLauncher from the app drawer. | Package installs, main management activity opens, no immediate crash; record any target-SDK compatibility warning. | ☐ Pass ☐ Fail | Not run |
 | B-03 | Select WinLauncher as the Home app from Android's Home-app chooser, press Home and relaunch. | The separate Desktop activity is offered as Home and opens; the management screen remains separately launchable. | ☐ Pass ☐ Fail | Not run |
 | B-04 | Inspect the APK/release tree and repository status. | No bundled third-party font file, local SDK path, signing key, debug APK, or build output is committed or packaged as source. | ☐ Pass ☐ Fail | Not run |
+| B-05 | Run `python3 tools/compile_check.py` with a JDK and `android.jar` (API 35) available, then `python3 tools/verify_quality.py`. | compile_check reports PASS with the class count; the verifier reports 169/169 PASS and exits 0. | ☐ Pass ☐ Fail | Not run |
+| B-06 | Run `python3 tools/make_release.py` and rebuild the archive after a source change. | The archive is regenerated from the working tree and its printed SHA-256 changes with the sources; the archive itself is not tracked by git. | ☐ Pass ☐ Fail | Not run |
 
 ## B. Stage 0 and exact E-1…E-10 device hypotheses
 
@@ -51,6 +53,9 @@ For every case, perform the listed action, compare with the expected result, the
 | R-03 | Press PrtSc on a supported external keyboard. | RootServer writes a PNG under `/sdcard/Pictures/WinLauncher/`; KeyService reports the returned path or a clear error; RootBridge sends only the capture command and receives a JSON path, never bitmap/Base64 data. | ☐ Pass ☐ Fail | Not run |
 | R-04 | Use each Action Center radio action on Wi‑Fi, Bluetooth, mobile data and airplane mode; compare with Android Settings before/after. | A known state flips once and matches system state; unsupported state/command opens or recommends Settings and is not falsely presented as successful. | ☐ Pass ☐ Fail | Not run |
 | R-05 | Exercise system-setting writes only on a test device; reboot and inspect state. | Commands are limited to documented actions; airplane-mode broadcast is consistent; no unrelated global settings are modified. | ☐ Pass ☐ Fail | Not run |
+| R-06 | **J-01:** resize a disposable freeform window by dragging its edge and by snapping it to a layout; read the JSON answer of the root bridge. | The task really changes size (root `resizeTask` succeeds through the boolean overload); no `NoSuchMethodException` and no "resize failed" toast. | ☐ Pass ☐ Fail | Not run |
+| R-07 | **J-02:** open several different apps in freeform mode and read the task list (taskbar labels, Task View rows, window titles). | Every window shows a real application label and icon, not the generic “Окно”; the launcher's own activities never appear as managed windows. | ☐ Pass ☐ Fail | Not run |
+| R-08 | **J-03:** toggle Wi‑Fi, Bluetooth and mobile data from the Action Center and compare the tile text with Android Settings afterwards. | The tile shows the state that was read back from the system; if a command is ignored by the firmware, the tile says the state is unconfirmed instead of “Вкл.” | ☐ Pass ☐ Fail | Not run |
 
 ## D. Windows, state persistence, taskbar, and groups
 

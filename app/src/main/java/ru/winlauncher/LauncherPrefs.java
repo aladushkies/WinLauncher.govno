@@ -89,9 +89,10 @@ public final class LauncherPrefs {
                 .putBoolean("samsung_caption_calibrated", true).apply();
     }
 
-    public void setWindowBounds(int taskId, int left, int top, int right, int bottom, String state) {
-        p.edit().putString("task_" + taskId, left + "," + top + "," + right + "," + bottom + "," + state).apply();
-    }
+    // J-06: the former setWindowBounds() wrote "task_<id>" with a comma-separated payload,
+    // while saveMinimizedState()/restorePersistedMinimizedState() use a pipe-separated record
+    // with seven fields. The old writer was never called, but any future caller would have
+    // corrupted the persisted minimized state, so the incompatible writer is gone.
     public void saveMinimizedState(int taskId,String packageName,int left,int top,int right,int bottom,String state,String groupId,String layout,int cell,String cellBounds) {
         p.edit().putString("task_"+taskId,packageName+"|"+state+"|"+left+","+top+","+right+","+bottom+"|"+(groupId==null?"":groupId)+"|"+(layout==null?"":layout)+"|"+cell+"|"+(cellBounds==null?"":cellBounds)).apply();
     }

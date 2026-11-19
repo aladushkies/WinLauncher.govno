@@ -226,6 +226,10 @@ public final class WindowController {
         return windows.get(w.taskId) == w && w.operationSequence == operation;
     }
     public long geometryGeneration() { return generation; }
+    /** J-04: the freeform stack id is injectable, so the overlays must ask for it instead of
+     *  hardcoding stack 2. With a different freeform stack the chrome, the taskbar buttons,
+     *  Snap Assist and Task View all filtered on the wrong stack and showed nothing. */
+    public int freeformStackId() { return freeformStackId; }
     public SnapController snapController() { return snapController; }
     public Rect displayBounds(){return new Rect(0,0,screenWidth,screenHeight);}
     public boolean hasDockedPair(){return dockedPair!=null&&dockedPair.isActive();}

@@ -51,7 +51,10 @@ public final class ResizeGripManager {
             if (g == null) {
                 g = new Grip(direction);
                 grips.put(direction, g);
-                try { wm.addView(g.view, g.params); } catch (RuntimeException e) { grips.remove(direction); return; }
+                // J-07: one refused grip must not abort the whole update. The old `return`
+                // left the remaining directions unpositioned (1x1 at 0,0) and the invisible
+                // hit areas of the active window unusable.
+                try { wm.addView(g.view, g.params); } catch (RuntimeException e) { grips.remove(direction); continue; }
             }
             // M-04: a grip mid-drag keeps its window; the others follow the active one.
             if (g.dragWin == null) g.win = active;

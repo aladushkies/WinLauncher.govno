@@ -167,6 +167,17 @@ public final class EdgeLiteActivity extends Activity {
         if(current!=null&&current.url!=null&&(current.url.startsWith("http://")||current.url.startsWith("https://")))prefs.setBrowserLastUrl(current.url);
         super.onStop();
     }
-    @Override protected void onDestroy(){for(Tab tab:tabs){tab.web.stopLoading();tab.web.destroy();}tabs.clear();super.onDestroy();}
+    @Override protected void onDestroy(){
+        // J-05: a WebView that is still attached to a parent must not be destroyed: the
+        // Chromium widget keeps using the container and the platform logs "Cannot destroy
+        // WebView that is still attached". Detach every tab first, then destroy it.
+        for(Tab tab:tabs){
+            tab.web.stopLoading();
+            if(tab.web.getParent() instanceof android.view.ViewGroup)
+                ((android.view.ViewGroup)tab.web.getParent()).removeView(tab.web);
+            tab.web.destroy();
+        }
+        tabs.clear();super.onDestroy();
+    }
     private int dp(float value){return(int)(value*getResources().getDisplayMetrics().density+.5f);}
 }

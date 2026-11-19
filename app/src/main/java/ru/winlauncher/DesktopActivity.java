@@ -211,7 +211,15 @@ public final class DesktopActivity extends Activity {
     }
     private void removeWidget(int id){widgetHost.deleteAppWidgetId(id);Set<String> ids=prefs.appWidgetIds();ids.remove(String.valueOf(id));prefs.setAppWidgetIds(ids);renderWidgets();}
 
-    @Override protected void onDestroy(){handler.removeCallbacks(slideshow);if(backgroundMenu!=null&&backgroundMenu.isShowing())backgroundMenu.dismiss();if(appsDialog!=null&&appsDialog.isShowing())appsDialog.dismiss();super.onDestroy();}
+    @Override protected void onDestroy(){
+        handler.removeCallbacks(slideshow);
+        if(backgroundMenu!=null&&backgroundMenu.isShowing())backgroundMenu.dismiss();
+        if(appsDialog!=null&&appsDialog.isShowing())appsDialog.dismiss();
+        // J-06 (checked during the round-J audit, no change required): AppWidgetHost has no public destroy() — only
+        // stopListening() (already called from onStop) and deleteHost(), which would delete
+        // the user's widgets. The host is released with the process.
+        super.onDestroy();
+    }
     private int dp(float value){return(int)(value*getResources().getDisplayMetrics().density+.5f);}
     private final class BloomView extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);

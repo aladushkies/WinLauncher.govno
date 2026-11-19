@@ -53,4 +53,4 @@
 - Esc выходит из FULLSCREEN только при включённой настройке.
 - Все невозможные/зависимые от system privilege или Samsung прошивки функции фиксируются в README с конкретной причиной.
 - `TEST_PLAN.md` задаёт действия, ожидаемый результат и Pass/Fail для сборки, этапов, горячих клавиш и feature-групп. `DEVICE_CHECKLIST.md` — ручная Samsung-проверка. Нельзя объявлять source checks результатом сборки или runtime acceptance.
-- GitHub-корень — `WinLauncherRoot`; исключить local.properties, build/cache, APK и signing secrets. После исходниковых изменений пересобрать ZIP и проверить SHA‑256.
+- GitHub-корень — `WinLauncherRoot`; исключить local.properties, build/cache, APK и signing secrets. Архив исходников не коммитится: после изменений пересобрать его командой `python3 tools/make_release.py` (печатает SHA‑256) и сверить с изменениями.

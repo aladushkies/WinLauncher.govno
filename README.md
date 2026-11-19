@@ -6,9 +6,11 @@
 
 - `PLAN.md` содержит краткую карту scope из ТЗ, включая этапы 0–5 и точные формулировки гипотез Этапа 0 E‑1…E‑10. Проверки E‑1…E‑10 вынесены отдельно в `TEST_PLAN.md`.
 - Этап 5 намеренно не выполнялся: он опциональный по исходному запросу.
-- **APK не собран, устройство и runtime не проверены.** Android SDK/Gradle здесь отсутствуют. Статические source checks и XML parsing не подтверждают Java-компиляцию, Samsung hidden API или поведение SM‑T555.
+- **Исходники компилируются настоящим `javac` против `android.jar` (API 35)** — 71 class file, 0 ошибок. Проверка живёт в `tools/compile_check.py` и вызывается как пункт J‑09 из `tools/verify_quality.py`. Это доказывает синтаксис и сигнатуры, но не Gradle/AGP-сборку, не D8 и не работу на устройстве.
+- **APK не собран, устройство и runtime не проверены.** Android SDK/Gradle в этом окружении отсутствуют.
 - `TEST_PLAN.md` задаёт действия, ожидаемые результаты и Pass/Fail; сейчас все device/runtime cases остаются Not run. `DEVICE_CHECKLIST.md` — ручной чек-лист планшета.
 - Signing key не поставляется. Samsung/Android Installer принимает корректную подпись APK, но подписывать приложение Samsung production certificate проект не умеет и не заявляет.
+- Последний построчный дебаг — раунд J: `docs/history/JFIXES.md` (дефекты J‑01…J‑08, чистка репозитория). История более ранних раундов: `docs/history/`.
 
 ## Что есть в исходниках
 
@@ -51,7 +53,7 @@ Launcher-owned overlays используют сплошные цвета и `Pix
 
 ## Сборка
 
-Нужны Android Studio, JDK 17, Android SDK Platform 35 и установленный Gradle 8.7+ (совместимый с Android Gradle Plugin 8.6.1). Gradle wrapper в исходниках не включён. Сборка `gradle :app:assembleDebug` в этой среде не выполнялась; отдельно, как проверка синтаксиса и сигнатур, исходники компилировались `javac` 8 против bootclasspath-заглушки Android (см. `REPORT.md`). Это не заменяет Android-сборку.
+Нужны Android Studio, JDK 17, Android SDK Platform 35 и установленный Gradle 8.7+ (совместимый с Android Gradle Plugin 8.6.1). Gradle wrapper в исходниках не включён. Сборка `gradle :app:assembleDebug` в этом окружении не выполнялась — Android SDK и Gradle здесь отсутствуют.
 
 ```sh
 gradle :app:assembleDebug
@@ -59,14 +61,35 @@ gradle :app:assembleDebug
 
 После успешной сборки APK: `app/build/outputs/apk/debug/app-debug.apk`. `minSdk=25`, `targetSdk=25`, compile SDK 35, Java 8 source compatibility. Используйте disposable test apps и тестовый планшет; overlays, Accessibility, notification listener, widget binding и storage требуют пользовательских согласий.
 
+Отдельно от Gradle доступна проверка компиляции без Android Studio — она доказывает, что все 23 исходника собираются, но не заменяет Android-сборку:
+
+```sh
+ANDROID_JAR=$ANDROID_HOME/platforms/android-35/android.jar JAVA_HOME=/path/to/jdk \
+  python3 tools/compile_check.py
+```
+
 ## Проверки
 
 ```sh
-python3 tools/verify_quality.py
+python3 tools/verify_quality.py     # 169 статических проверок + пункт J-09 (реальная компиляция)
+python3 tools/compile_check.py      # только компиляция (PASS / SKIP / FAIL)
+python3 tools/make_release.py       # собрать архив исходников и напечатать SHA-256
 ```
 
-Verifier выполняет статические source-coherence assertions и XML/delimiter checks. Он **не запускает Android build, APK install или device/runtime tests**. Подробный acceptance-plan: `TEST_PLAN.md`; ручной список Samsung-проверок: `DEVICE_CHECKLIST.md`.
+Verifier выполняет статические source-coherence assertions, XML/delimiter checks и — если найдены `javac` и `android.jar` — настоящую компиляцию всех исходников. Он **не запускает Android build, APK install или device/runtime tests**. Подробный acceptance-plan: `TEST_PLAN.md`; ручной список Samsung-проверок: `DEVICE_CHECKLIST.md`.
+
+## Структура репозитория
+
+| Путь | Что это |
+|---|---|
+| `app/src/main/java/ru/winlauncher/` | 23 Java-файла лаунчера, root-моста и оверлеев |
+| `app/src/main/java/ru/winlauncher/root/` | `RootServer` — сторона, работающая от root |
+| `app/src/main/java/ru/winlauncher/bridge/` | `RootBridge` и запуск `app_process` через `su` |
+| `tools/verify_quality.py` | статические проверки + compile gate (J‑09) |
+| `tools/compile_check.py` | компиляция всех исходников против `android.jar` |
+| `tools/make_release.py` | сборка архива исходников и SHA-256 |
+| `docs/history/` | журнал раундов аудита: `AUDIT`, `FIXES` (D), `BUGFIXES`, `WC2FIXES`, `RFIXES`, `FFIXES`, `GFIXES`, `HFIXES`, `IFIXES`, `JFIXES` |
 
 ## GitHub-подготовка
 
-Корень проекта — `WinLauncherRoot`; `.gitignore` исключает `local.properties`, IDE/Gradle caches, build outputs, APK/AAB и signing keys. Не коммитьте keystore, SDK paths, реальные уведомления, пользовательские screenshots или device logs. Внешние шрифтовые файлы не входят в поставку.
+Корень проекта — `WinLauncherRoot`; `.gitignore` исключает `local.properties`, IDE/Gradle caches, build outputs, APK/AAB, signing keys и генерируемые ZIP-архивы. Архив исходников больше не коммитится: он собирается из рабочего дерева командой `python3 tools/make_release.py` (печатает SHA-256) — так он не может разойтись с исходниками. Не коммитьте keystore, SDK paths, реальные уведомления, пользовательские screenshots или device logs. Внешние шрифтовые файлы не входят в поставку.

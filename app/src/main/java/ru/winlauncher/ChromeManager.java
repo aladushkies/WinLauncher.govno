@@ -84,7 +84,7 @@ private void render(List<Win>windows){
         // H-05: no title bars above a fullscreen window.
         for(Win w:windows)if(w.visible&&w.state==Win.State.FULLSCREEN){removeAll();grips.update(windows,-1);return;}
         ArrayList<Win> eligible=new ArrayList<>();
-        for(Win w:windows)if(w.stackId==2&&w.visible&&w.state!=Win.State.FULLSCREEN&&w.state!=Win.State.MINIMIZED&&w.hasUsableBounds())eligible.add(w);
+        for(Win w:windows)if(w.stackId==controller.freeformStackId()&&w.visible&&w.state!=Win.State.FULLSCREEN&&w.state!=Win.State.MINIMIZED&&w.hasUsableBounds())eligible.add(w);
         Collections.sort(eligible,Comparator.comparingInt(w->w.z));
         ArrayList<Integer> desired=new ArrayList<>();int activeId=eligible.isEmpty()?-1:eligible.get(eligible.size()-1).taskId;
         for(Win w:eligible)desired.add(w.taskId);
