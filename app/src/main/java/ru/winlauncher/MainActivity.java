@@ -47,25 +47,25 @@ public final class MainActivity extends Activity {
         root.setPadding(dp(18), dp(18), dp(18), dp(12));
         TextView title = new TextView(this);
         title.setText("WinLauncher Root · Window Core");
-        title.setTextSize(21); title.setTextColor(0xff1a1a1a);
+        title.setTextSize(UiTokens.TEXT_TITLE); title.setTextColor(UiTokens.textPrimary(false));
         root.addView(title, new LinearLayout.LayoutParams(-1, -2));
         TextView note = new TextView(this);
         note.setText("RootServer, управление freeform-окнами, Snap, resize grips, taskbar и fullscreen-зоны. Hidden API и stack IDs требуют проверки на Samsung; начинайте с тестовых окон.");
-        note.setTextSize(13); note.setPadding(0, dp(6), 0, dp(8));
+        note.setTextSize(UiTokens.TEXT_BUTTON); note.setPadding(0, dp(6), 0, dp(8));
         root.addView(note);
         LauncherPrefs prefs = new LauncherPrefs(this);
         boolean dark=prefs.darkTheme();
         appliedDark=dark;
         appliedDarkKnown=true;
         if(dark){
-            root.setBackgroundColor(0xff202020);
-            title.setTextColor(0xfff5f5f5);
-            note.setTextColor(0xffc5c5c5);
+            root.setBackgroundColor(UiTokens.page(true));
+            title.setTextColor(UiTokens.textPrimary(true));
+            note.setTextColor(UiTokens.textSecondary(true));
         }
         CheckBox windowsBehavior=new CheckBox(this);
         windowsBehaviorBox=windowsBehavior;
         windowsBehavior.setText("Поведение как в Windows: кнопка MAX восстанавливает NORMAL");
-        if(dark)windowsBehavior.setTextColor(0xfff5f5f5);
+        if(dark)windowsBehavior.setTextColor(UiTokens.textPrimary(true));
         windowsBehavior.setChecked(prefs.windowsButtonBehavior());
         windowsBehavior.setOnCheckedChangeListener((button,checked)->{
             if(syncingChecks)return;
@@ -76,7 +76,7 @@ public final class MainActivity extends Activity {
         CheckBox hideStatus = new CheckBox(this);
         hideStatusBox=hideStatus;
         hideStatus.setText("Скрывать системный статус-бар и шторку (root)");
-        if(dark)hideStatus.setTextColor(0xfff5f5f5);
+        if(dark)hideStatus.setTextColor(UiTokens.textPrimary(true));
         hideStatus.setChecked(prefs.hideStatusBar());
         hideStatus.setOnCheckedChangeListener((button, checked) -> {
             if(syncingChecks)return;
@@ -104,8 +104,8 @@ public final class MainActivity extends Activity {
             status.setText("Заголовки скрыты.");
         });
         status = new TextView(this);
-        if(dark)status.setTextColor(0xfff5f5f5);
-        status.setTextIsSelectable(true); status.setTextSize(12); status.setGravity(Gravity.TOP);
+        if(dark)status.setTextColor(UiTokens.textPrimary(true));
+        status.setTextIsSelectable(true); status.setTextSize(UiTokens.TEXT_CAPTION); status.setGravity(Gravity.TOP);
         status.setMinHeight(dp(96)); // U-02
         status.setText("Сначала запустите RootServer и подтвердите запрос SuperSU/Magisk. Для заголовков требуется SYSTEM_ALERT_WINDOW.");
         // U-02 / I-06: add status directly inside the single pageScroll (no nested ScrollView).

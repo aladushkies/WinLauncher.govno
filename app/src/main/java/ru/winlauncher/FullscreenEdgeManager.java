@@ -116,19 +116,19 @@ public final class FullscreenEdgeManager implements WindowController.Listener {
         row.setBackground(round(dark?0xff292929:0xfff3f3f3,0));
         TextView title=new TextView(context);
         title.setText(w.title==null?w.packageName:w.title);
-        title.setTextColor(dark?0xfff5f5f5:0xff1a1a1a);
-        title.setTextSize(12);
+        title.setTextColor(UiTokens.textPrimary(dark));
+        title.setTextSize(UiTokens.TEXT_CAPTION);
         title.setSingleLine(true);title.setEllipsize(android.text.TextUtils.TruncateAt.END);title.setGravity(Gravity.CENTER_VERTICAL); // U-08 / I-11
-        LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(0,dp(32),1);titleLp.gravity=Gravity.CENTER_VERTICAL;row.addView(title,titleLp);
+        LinearLayout.LayoutParams titleLp=new LinearLayout.LayoutParams(0,dp(UiTokens.MIN_TOUCH_TARGET),1);titleLp.gravity=Gravity.CENTER_VERTICAL;row.addView(title,titleLp);
         TextView min=miniButton("—",dark);
         TextView restore=miniButton("⧉",dark);
         TextView close=miniButton("×",dark);
         min.setContentDescription("Свернуть окно");
         restore.setContentDescription("Вернуть окно к максимальному размеру");
         close.setContentDescription("Закрыть окно");
-        row.addView(min,new LinearLayout.LayoutParams(dp(46),dp(32)));
-        row.addView(restore,new LinearLayout.LayoutParams(dp(46),dp(32)));
-        row.addView(close,new LinearLayout.LayoutParams(dp(46),dp(32)));
+        row.addView(min,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+        row.addView(restore,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+        row.addView(close,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
         // F-12: every button hides the bar too.
         min.setOnClickListener(v->{
             hideMini();
@@ -179,7 +179,7 @@ public final class FullscreenEdgeManager implements WindowController.Listener {
         wm.getDefaultDisplay().getRealMetrics(dm);
         miniParams=new WindowManager.LayoutParams(
                 Math.min(dm.widthPixels,dp(560)),
-                dp(32),
+                dp(UiTokens.MIN_TOUCH_TARGET),
                 WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         |WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
@@ -187,8 +187,8 @@ public final class FullscreenEdgeManager implements WindowController.Listener {
                         |WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.OPAQUE);
         miniParams.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;
-        // U-08: do not slide under a visible system status bar.
-        if(!prefs.hideStatusBar())miniParams.y=controller.workArea().top;
+        // U-08: do not slide under a visible system status bar; K-03 adds the display cutout.
+        miniParams.y=controller.workArea().top;
         miniParams.setTitle("WinLauncher fullscreen mini title");
         mini=row;
         try{
@@ -216,13 +216,13 @@ public final class FullscreenEdgeManager implements WindowController.Listener {
         miniParams=null;
     }
     // U-08: hovering or touching a mini button re-arms the auto-hide timer (see the listeners).
-    private TextView miniButton(String text,boolean dark){boolean isClose="×".equals(text);TextView v=new TextView(context);v.setText(text);v.setTextSize(15);v.setTextColor(dark?0xfff5f5f5:0xff202020);v.setGravity(Gravity.CENTER);v.setBackground(round(dark?0xff292929:0xfff3f3f3,8));v.setOnHoverListener((x,e)->{scheduleMiniAutoHide();if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE){x.setBackground(round(isClose?0xffc42b1c:(dark?0xff424242:0xffdddddd),8));if(isClose)((TextView)x).setTextColor(Color.WHITE);}else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT){x.setBackground(round(dark?0xff292929:0xfff3f3f3,8));((TextView)x).setTextColor(dark?0xfff5f5f5:0xff202020);}return false;});v.setOnTouchListener((x,e)->{scheduleMiniAutoHide();if(e.getActionMasked()==MotionEvent.ACTION_DOWN){x.setBackground(round(isClose?0xffa91f12:(dark?0xff5c5c5c:0xffc9c9c9),8));if(isClose)((TextView)x).setTextColor(Color.WHITE);}else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL){x.setBackground(round(x.isHovered()?(isClose?0xffc42b1c:(dark?0xff424242:0xffdddddd)):dark?0xff292929:0xfff3f3f3,8));((TextView)x).setTextColor(isClose&&x.isHovered()?Color.WHITE:(dark?0xfff5f5f5:0xff202020));}return false;});return v;}
+    private TextView miniButton(String text,boolean dark){boolean isClose="×".equals(text);TextView v=new TextView(context);v.setText(text);v.setTextSize(UiTokens.TEXT_ROW);v.setTextColor(UiTokens.textOnSurface(dark));v.setGravity(Gravity.CENTER);v.setBackground(round(UiTokens.surfaceMini(dark),UiTokens.RADIUS_MEDIUM));v.setOnHoverListener((x,e)->{scheduleMiniAutoHide();if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE){x.setBackground(round(isClose?UiTokens.danger():UiTokens.surfaceHoverCompact(dark),UiTokens.RADIUS_MEDIUM));if(isClose)((TextView)x).setTextColor(UiTokens.textOnAccent());}else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT){x.setBackground(round(UiTokens.surfaceMini(dark),UiTokens.RADIUS_MEDIUM));((TextView)x).setTextColor(UiTokens.textOnSurface(dark));}return false;});v.setOnTouchListener((x,e)->{scheduleMiniAutoHide();if(e.getActionMasked()==MotionEvent.ACTION_DOWN){x.setBackground(round(isClose?UiTokens.dangerPressedCompact():UiTokens.surfacePressedCompact(dark),UiTokens.RADIUS_MEDIUM));if(isClose)((TextView)x).setTextColor(UiTokens.textOnAccent());}else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL){x.setBackground(round(x.isHovered()?(isClose?UiTokens.danger():UiTokens.surfaceHoverCompact(dark)):UiTokens.surfaceMini(dark),UiTokens.RADIUS_MEDIUM));((TextView)x).setTextColor(isClose&&x.isHovered()?UiTokens.textOnAccent():UiTokens.textOnSurface(dark));}return false;});return v;}
     private GradientDrawable round(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(radius);return d;}
     private int dp(float x){return(int)(x*density+.5f);}
 
     private final class Edge implements View.OnTouchListener,View.OnHoverListener {
         final Side side;final View view;WindowManager.LayoutParams params;final Win owner;float sx,sy;long lastSwipe;final android.os.Handler handler=new android.os.Handler(android.os.Looper.getMainLooper());Runnable hover;
-        Edge(Side s,Win w){side=s;owner=w;view=new View(context);view.setBackgroundColor(0xff0067c0);view.setOnTouchListener(this);view.setOnHoverListener(this);}
+        Edge(Side s,Win w){side=s;owner=w;view=new View(context);view.setBackgroundColor(UiTokens.accentLight());view.setOnTouchListener(this);view.setOnHoverListener(this);}
         public boolean onTouch(View v,MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){sx=e.getRawX();sy=e.getRawY();return true;}if(e.getActionMasked()==MotionEvent.ACTION_UP){float dx=e.getRawX()-sx,dy=e.getRawY()-sy;boolean valid=side==Side.TOP?dy>dp(12):side==Side.BOTTOM?dy<-dp(12):side==Side.LEFT?dx>dp(20):dx<-dp(20);if(valid)trigger();return true;}return true;}
         private void trigger(){if(active==null||!owner.packageName.equals(active.packageName)||prefs.areEdgesDisabled(owner.packageName))return;if(prefs.doubleSwipeEdges()){long now=android.os.SystemClock.uptimeMillis();if(now-lastSwipe>1100){lastSwipe=now;Toast.makeText(context,"Повторите свайп",Toast.LENGTH_SHORT).show();return;}lastSwipe=0;}perform(side);}
         void cancelHover(){if(hover!=null){handler.removeCallbacks(hover);hover=null;}}

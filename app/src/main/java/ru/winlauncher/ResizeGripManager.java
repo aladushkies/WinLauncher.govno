@@ -100,7 +100,7 @@ public final class ResizeGripManager {
         Grip(int direction) {
             this.direction=direction;
             view = new View(context);
-            view.setBackgroundColor(0xff0067c0);
+            view.setBackgroundColor(UiTokens.accentLight());
             if (Build.VERSION.SDK_INT >= 24) view.setPointerIcon(PointerIcon.getSystemIcon(context, pointerType(direction)));
             view.setOnTouchListener(this);
             params = new WindowManager.LayoutParams(1,1,WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,

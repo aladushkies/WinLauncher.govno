@@ -4,10 +4,10 @@
 
 - **Current state:** tests are defined only; none of the APK, runtime, or device checks below has been run in this workspace.
 - **Target device:** Samsung Galaxy Tab A 9.7 SM‑T555, Android 7.1.1 / API 25, rooted test image; record exact build fingerprint, root manager and density before testing.
-- **Important:** this plan is not a build result. Static source-coherence checks are reported separately by `tools/verify_quality.py`, and `tools/compile_check.py` proves that all 23 sources compile against `android.jar` (API 35) with a real `javac` (71 class files, 0 errors). Neither of them proves hidden-API compatibility or runtime behavior.
+- **Important:** this plan is not a build result. Static source-coherence checks are reported separately by `tools/verify_quality.py`, and `tools/compile_check.py` proves that all 23 sources compile against `android.jar` (API 35) with a real `javac` (73 class files, 0 errors). Neither of them proves hidden-API compatibility or runtime behavior.
 - **Stage 0 hypotheses:** E‑1…E‑10 below reproduce the supplied TЗ statements and are device experiments, not source implementation claims.
 - **Stage 5:** intentionally excluded because it was explicitly optional. Do not use the optional Stage 5 as a release gate.
-- **Audit passes:** round‑by‑round records live in `docs/history/` (`AUDIT.md`, `FIXES.md` D‑01…14, `BUGFIXES.md`, `WC2FIXES.md`, `RFIXES.md`, `FFIXES.md`, `GFIXES.md`, `HFIXES.md`, `IFIXES.md`, `JFIXES.md`). The latest round J added the compile gate and fixed J‑01…J‑08; static checks now report 169/169 PASS. This does **not** change any row below: no Gradle/AGP build ran, and no device or runtime case was executed.
+- **Audit passes:** round‑by‑round records live in `docs/history/` (`AUDIT.md`, `FIXES.md` D‑01…14, `BUGFIXES.md`, `WC2FIXES.md`, `RFIXES.md`, `FFIXES.md`, `GFIXES.md`, `HFIXES.md`, `IFIXES.md`, `JFIXES.md`, `KFIXES.md`). The latest round J added the compile gate and fixed J‑01…J‑08; round K centralised the UI tokens, raised the primary touch targets to 48 dp and added the status/navigation/cutout inset model; static checks now report 174/174 PASS. This does **not** change any row below: no Gradle/AGP build ran, and no device or runtime case was executed.
 
 For every case, perform the listed action, compare with the expected result, then mark one result. Leave both unchecked until actually tested; record build fingerprint, screenshots/logs and failure details in Notes.
 
@@ -25,7 +25,7 @@ For every case, perform the listed action, compare with the expected result, the
 | B-02 | Install that APK on Android 7.1.1 with `adb install -r …`; launch WinLauncher from the app drawer. | Package installs, main management activity opens, no immediate crash; record any target-SDK compatibility warning. | ☐ Pass ☐ Fail | Not run |
 | B-03 | Select WinLauncher as the Home app from Android's Home-app chooser, press Home and relaunch. | The separate Desktop activity is offered as Home and opens; the management screen remains separately launchable. | ☐ Pass ☐ Fail | Not run |
 | B-04 | Inspect the APK/release tree and repository status. | No bundled third-party font file, local SDK path, signing key, debug APK, or build output is committed or packaged as source. | ☐ Pass ☐ Fail | Not run |
-| B-05 | Run `python3 tools/compile_check.py` with a JDK and `android.jar` (API 35) available, then `python3 tools/verify_quality.py`. | compile_check reports PASS with the class count; the verifier reports 169/169 PASS and exits 0. | ☐ Pass ☐ Fail | Not run |
+| B-05 | Run `python3 tools/compile_check.py` with a JDK and `android.jar` (API 35) available, then `python3 tools/verify_quality.py`. | compile_check reports PASS with the class count; the verifier reports 174/174 PASS and exits 0. | ☐ Pass ☐ Fail | Not run |
 | B-06 | Run `python3 tools/make_release.py` and rebuild the archive after a source change. | The archive is regenerated from the working tree and its printed SHA-256 changes with the sources; the archive itself is not tracked by git. | ☐ Pass ☐ Fail | Not run |
 
 ## B. Stage 0 and exact E-1…E-10 device hypotheses

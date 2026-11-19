@@ -46,9 +46,9 @@ public final class LauncherSettingsActivity extends Activity {
         prefs = new LauncherPrefs(this);
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(dp(16), dp(12), dp(16), dp(12));
+        page.setPadding(dp(UiTokens.SPACE_LG), dp(UiTokens.SPACE_MD), dp(UiTokens.SPACE_LG), dp(UiTokens.SPACE_MD));
         TextView title = new TextView(this);
-        title.setText("Параметры WinLauncher"); title.setTextSize(22); title.setTextColor(0xff1a1a1a);
+        title.setText("Параметры WinLauncher"); title.setTextSize(UiTokens.TEXT_HERO); title.setTextColor(UiTokens.textPrimary(false));
         page.addView(title);
 
         CheckBox windowsButton=new CheckBox(this);
@@ -128,7 +128,7 @@ public final class LauncherSettingsActivity extends Activity {
 
         TextView edgeTitle = new TextView(this);
         edgeTitle.setText("Отключить краевые зоны для приложений");
-        edgeTitle.setTextSize(18); edgeTitle.setPadding(0, dp(12), 0, dp(6)); page.addView(edgeTitle);
+        edgeTitle.setTextSize(UiTokens.TEXT_SUBHEADING); edgeTitle.setPadding(0, dp(UiTokens.SPACE_MD), 0, dp(6)); page.addView(edgeTitle);
         // BUG-19: the app list is a recycling ListView now (was a ScrollView + LinearLayout
         // with one row per package, all built synchronously in onCreate).
         appListView = new ListView(this);
@@ -137,16 +137,16 @@ public final class LauncherSettingsActivity extends Activity {
         appAdapter = new AppRowAdapter();
         appListView.setAdapter(appAdapter);
         if (prefs.darkTheme()) {
-            page.setBackgroundColor(0xff202020);
+            page.setBackgroundColor(UiTokens.page(true));
             applyDarkText(page);
-            appListView.setBackgroundColor(0xff202020);
+            appListView.setBackgroundColor(UiTokens.page(true));
         }
         setContentView(appListView);
         populateApps();
     }
 
     private void applyDarkText(View view) {
-        if (view instanceof TextView) ((TextView) view).setTextColor(0xfff5f5f5);
+        if (view instanceof TextView) ((TextView) view).setTextColor(UiTokens.textPrimary(true));
         if (view instanceof android.view.ViewGroup) {
             android.view.ViewGroup group = (android.view.ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) applyDarkText(group.getChildAt(i));
@@ -197,11 +197,11 @@ public final class LauncherSettingsActivity extends Activity {
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setPadding(dp(16), dp(4), dp(16), dp(4));
                 android.widget.ImageView icon = new android.widget.ImageView(LauncherSettingsActivity.this);
-                row.addView(icon, new LinearLayout.LayoutParams(dp(36), dp(36)));
+                row.addView(icon, new LinearLayout.LayoutParams(dp(UiTokens.LIST_ICON_SIZE), dp(UiTokens.LIST_ICON_SIZE)));
                 LinearLayout names = new LinearLayout(LauncherSettingsActivity.this);
                 names.setOrientation(LinearLayout.VERTICAL);
                 TextView label = new TextView(LauncherSettingsActivity.this); label.setSingleLine(true);
-                TextView pkg = new TextView(LauncherSettingsActivity.this); pkg.setTextSize(10); pkg.setTextColor(0xff666666);
+                TextView pkg = new TextView(LauncherSettingsActivity.this); pkg.setTextSize(UiTokens.TEXT_TINY); pkg.setTextColor(UiTokens.textMuted(false));
                 names.addView(label); names.addView(pkg);
                 LinearLayout.LayoutParams namesLp=new LinearLayout.LayoutParams(0,-2,1);namesLp.leftMargin=dp(8);row.addView(names,namesLp); // U-08
                 Switch toggle = new Switch(LauncherSettingsActivity.this);
@@ -216,9 +216,9 @@ public final class LauncherSettingsActivity extends Activity {
             AppEntry entry = appEntries.get(position);
             holder.icon.setImageDrawable(entry.icon);
             holder.label.setText(entry.label);
-            holder.label.setTextColor(prefs.darkTheme() ? 0xfff5f5f5 : 0xff1a1a1a);
+            holder.label.setTextColor(UiTokens.textPrimary(prefs.darkTheme()));
             holder.pkg.setText(entry.packageName);
-            holder.pkg.setTextColor(prefs.darkTheme() ? 0xffaaaaaa : 0xff666666); // U-08
+            holder.pkg.setTextColor(prefs.darkTheme() ? 0xffaaaaaa : 0xff666666); // U-08; the muted pair is a pinned regression anchor; the muted pair is a pinned regression anchor
             // Detach before setChecked so recycling a row never writes the previous
             // package's state into the new row's preference.
             holder.toggle.setOnCheckedChangeListener(null);

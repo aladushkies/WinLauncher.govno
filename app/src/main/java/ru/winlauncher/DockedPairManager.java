@@ -160,7 +160,7 @@ public final class DockedPairManager {
 
     private void createDivider(){
         if(!isActive())return;
-        Divider hit=new Divider(context);hit.setBackgroundColor(new LauncherPrefs(context).darkTheme()?0xff444444:0xffb7b7b7); // U-08
+        Divider hit=new Divider(context);hit.setBackgroundColor(UiTokens.surfaceDivider(new LauncherPrefs(context).darkTheme())); // U-08
         int thickness=dp(12);Rect display=controller.displayBounds();
         dividerParams=new WindowManager.LayoutParams(verticalSplit?display.width():thickness,
                 verticalSplit?thickness:display.height(),WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
@@ -190,7 +190,7 @@ public final class DockedPairManager {
 
     private final class Divider extends View implements View.OnTouchListener {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);private boolean active;private final boolean dark;
-        Divider(Context c){super(c);dark=new LauncherPrefs(c).darkTheme();setOnTouchListener(this);setOnHoverListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE)active=true;else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT)active=false;invalidate();return false;});setBackgroundColor(dark?0xff444444:0xffb7b7b7);}
+        Divider(Context c){super(c);dark=new LauncherPrefs(c).darkTheme();setOnTouchListener(this);setOnHoverListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE)active=true;else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT)active=false;invalidate();return false;});setBackgroundColor(UiTokens.surfaceDivider(dark));}
         @Override protected void onDraw(Canvas canvas){super.onDraw(canvas);paint.setColor(active?(dark?0xff0097ff:0xff0067c0):(dark?0xff888888:0xff666666));float half=active?dp(1):1;if(verticalSplit)canvas.drawRect(0,getHeight()/2f-half,getWidth(),getHeight()/2f+half,paint);else canvas.drawRect(getWidth()/2f-half,0,getWidth()/2f+half,getHeight(),paint);}
         @Override public boolean onTouch(View v,MotionEvent event){
             if(event.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||event.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE){active=true;invalidate();}

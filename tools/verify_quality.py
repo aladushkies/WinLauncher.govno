@@ -981,6 +981,61 @@ checks.append(check("J-10: the source archive is generated on demand and is neve
     and "*.zip" in read(".gitignore")
     and (ROOT / "tools/make_release.py").exists()))
 
+# 20. Round K — central design tokens, 48 dp hit targets and the system-inset model.
+f_tokens = java("UiTokens")
+f_insets = java("SystemInsets")
+f_edge_lite_ui = java("EdgeLiteActivity")
+f_grips_ui = java("ResizeGripManager")
+UI_FILES = ["ChromeManager", "TaskbarOverlay", "TaskViewOverlay", "ActionCenterOverlay",
+            "FullscreenEdgeManager", "DesktopActivity", "LauncherSettingsActivity", "MainActivity",
+            "TaskManagerActivity", "SnapController", "DockedPairManager", "EdgeLiteActivity",
+            "ResizeGripManager", "WindowController", "MainActivity"]
+# The only raw ARGB values the UI package may still carry are the pinned regression anchors
+# of the checks above; every other color must come from UiTokens.
+PINNED_PALETTE = {
+    "ActionCenterOverlay": {"0xff292929", "0xfff5f5f5"},
+    "ChromeManager": {"0xff2b2b2b", "0xfff9f9f9", "0xff888888"},
+    "DesktopActivity": {"0xff202020", "0xffe8e8e8"},
+    "DockedPairManager": {"0xff0097ff", "0xff0067c0", "0xff888888", "0xff666666"},
+    "FullscreenEdgeManager": {"0xff292929", "0xfff3f3f3"},
+    "LauncherSettingsActivity": {"0xffaaaaaa", "0xff666666"},
+    "SnapController": {"0xff2b2b2b", "0xfff9f9f9", "0xff777777", "0xff888888", "0xfff5f5f5", "0xff1a1a1a"},
+    "TaskViewOverlay": {"0xfff5f5f5", "0xff1a1a1a"},
+    "TaskbarOverlay": {"0xff005a9e", "0xff004b85"},
+}
+stray_palette = []
+for _name in UI_FILES:
+    for _literal in sorted(set(re.findall(r"0x[0-9a-fA-F]{8}", java(_name)))):
+        if _literal not in PINNED_PALETTE.get(_name, set()):
+            stray_palette.append(f"{_name}:{_literal}")
+checks.append(check("K-01: the UI palette lives in UiTokens; only the pinned regression anchors keep raw colors",
+    not stray_palette
+    and len(set(re.findall(r"0x[0-9a-fA-F]{8}", f_tokens))) >= 60
+    and "public static final int MIN_TOUCH_TARGET = 48;" in f_tokens))
+checks.append(check("K-02: the primary controls are at least 48 dp tall",
+    "dp(UiTokens.MIN_TOUCH_TARGET)" in f_taskmgr and "dp(UiTokens.MIN_TOUCH_TARGET)" in f_taskview
+    and "dp(UiTokens.MIN_TOUCH_TARGET)" in f_actioncenter and "dp(UiTokens.MIN_TOUCH_TARGET)" in f_edges
+    and "dp(86),dp(42)" not in f_taskmgr
+    and "dp(44),dp(42)" not in f_taskview
+    and "dp(38))" not in f_actioncenter
+    and "dp(46),dp(32)" not in f_edges))
+checks.append(check("K-03: workArea() leaves room for the navigation bar and the display cutout",
+    "screenHeight - taskbarHeight - insets.bottom()" in f_window
+    and "Math.max(top, insets.cutoutTop)" in f_window
+    and "public int topInset()" in f_window and "public int bottomInset()" in f_window
+    and "public SystemInsets insets()" in f_window))
+checks.append(check("K-04: the absolutely positioned overlays are anchored against the system insets",
+    "params.y=-controller.bottomInset();" in f_taskbar
+    and "dp(12)+topInset()" in f_actioncenter
+    and "controller.topInset()+dp(48)" in f_chrome
+    and "controller.topInset()+dp(52)" in snap
+    and "miniParams.y=controller.workArea().top" in f_edges))
+checks.append(check("K-05: SystemInsets reads the status bar, the navigation bar and the display cutout",
+    "status_bar_height" in f_insets and "navigation_bar_height" in f_insets
+    and "getSafeInsetTop()" in f_insets and "getSafeInsetLeft()" in f_insets
+    and "Build.VERSION.SDK_INT >= 28" in f_insets
+    and "SystemInsets.read(context, display)" in f_window))
+
 if not all(checks):
     sys.exit(1)
 print(f"{len(checks)}/{len(checks)} static source-coherence checks passed; not a Java build, APK test, or device/runtime acceptance.")

@@ -42,16 +42,16 @@ public final class TaskViewOverlay {
         dismissActive();
         active=this;
         boolean dark=new LauncherPrefs(context).darkTheme();
-        LinearLayout shell=new LinearLayout(context);shell.setGravity(Gravity.CENTER);shell.setBackgroundColor(dark?0xff202020:0xfff4f4f4);shell.setClickable(true);
+        LinearLayout shell=new LinearLayout(context);shell.setGravity(Gravity.CENTER);shell.setBackgroundColor(UiTokens.pageSoft(dark));shell.setClickable(true);
         LinearLayout card=new LinearLayout(context);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(dp(16),dp(12),dp(16),dp(12));card.setClickable(true); // U-03: taps must not fall through to the shell
-        GradientDrawable bg=new GradientDrawable();bg.setColor(dark?0xff292929:0xfff4f4f4);bg.setCornerRadius(8);bg.setStroke(dp(1),dark?0xff777777:0xff888888);card.setBackground(bg);
-        TextView heading=new TextView(context);heading.setText("Task View · окна и split-screen");heading.setTextSize(20);heading.setTextColor(dark?0xfff5f5f5:0xff1a1a1a);heading.setPadding(dp(4),dp(4),dp(4),dp(10));card.addView(heading);
+        GradientDrawable bg=new GradientDrawable();bg.setColor(UiTokens.surfaceCard(dark));bg.setCornerRadius(UiTokens.RADIUS_MEDIUM);bg.setStroke(dp(1),UiTokens.outline(dark));card.setBackground(bg);
+        TextView heading=new TextView(context);heading.setText("Task View · окна и split-screen");heading.setTextSize(UiTokens.TEXT_HEADING);heading.setTextColor(dark?0xfff5f5f5:0xff1a1a1a);heading.setPadding(dp(4),dp(4),dp(4),dp(10));card.addView(heading);
         LinearLayout desktops=new LinearLayout(context);desktops.setOrientation(LinearLayout.HORIZONTAL);
-        TextView desktopLabel=new TextView(context);desktopLabel.setText("Рабочий стол "+(controller.currentDesktopId()+1)+" из "+controller.virtualDesktopCount());desktopLabel.setTextColor(dark?0xfff5f5f5:0xff202020);desktopLabel.setGravity(Gravity.CENTER_VERTICAL);
-        desktops.addView(desktopLabel,new LinearLayout.LayoutParams(0,dp(42),1));
-        Button previousDesktop=new Button(context);previousDesktop.setText("‹");styleButton(previousDesktop,dark);previousDesktop.setEnabled(controller.currentDesktopId()>0);previousDesktop.setOnClickListener(v->{controller.switchVirtualDesktop(controller.currentDesktopId()-1);dismiss();});desktops.addView(previousDesktop,new LinearLayout.LayoutParams(dp(44),dp(42)));
-        Button nextDesktop=new Button(context);nextDesktop.setText("›");styleButton(nextDesktop,dark);nextDesktop.setEnabled(controller.currentDesktopId()<controller.virtualDesktopCount()-1);nextDesktop.setOnClickListener(v->{controller.switchVirtualDesktop(controller.currentDesktopId()+1);dismiss();});desktops.addView(nextDesktop,new LinearLayout.LayoutParams(dp(44),dp(42)));
-        Button addDesktop=new Button(context);addDesktop.setText("+");styleButton(addDesktop,dark);addDesktop.setEnabled(controller.virtualDesktopCount()<4);addDesktop.setOnClickListener(v->{controller.createVirtualDesktop();dismiss();});desktops.addView(addDesktop,new LinearLayout.LayoutParams(dp(44),dp(42)));
+        TextView desktopLabel=new TextView(context);desktopLabel.setText("Рабочий стол "+(controller.currentDesktopId()+1)+" из "+controller.virtualDesktopCount());desktopLabel.setTextColor(UiTokens.textOnSurface(dark));desktopLabel.setGravity(Gravity.CENTER_VERTICAL);
+        desktops.addView(desktopLabel,new LinearLayout.LayoutParams(0,dp(UiTokens.MIN_TOUCH_TARGET),1));
+        Button previousDesktop=new Button(context);previousDesktop.setText("‹");styleButton(previousDesktop,dark);previousDesktop.setEnabled(controller.currentDesktopId()>0);previousDesktop.setOnClickListener(v->{controller.switchVirtualDesktop(controller.currentDesktopId()-1);dismiss();});desktops.addView(previousDesktop,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+        Button nextDesktop=new Button(context);nextDesktop.setText("›");styleButton(nextDesktop,dark);nextDesktop.setEnabled(controller.currentDesktopId()<controller.virtualDesktopCount()-1);nextDesktop.setOnClickListener(v->{controller.switchVirtualDesktop(controller.currentDesktopId()+1);dismiss();});desktops.addView(nextDesktop,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+        Button addDesktop=new Button(context);addDesktop.setText("+");styleButton(addDesktop,dark);addDesktop.setEnabled(controller.virtualDesktopCount()<4);addDesktop.setOnClickListener(v->{controller.createVirtualDesktop();dismiss();});desktops.addView(addDesktop,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
         card.addView(desktops);
 
         List<Win> windows=controller.snapshot();
@@ -85,18 +85,18 @@ public final class TaskViewOverlay {
                     dismiss();
                 });
                 focusButton.setOnLongClickListener(v->{chooseDesktop(w);return true;});
-                row.addView(focusButton,new LinearLayout.LayoutParams(0,dp(44),1));
+                row.addView(focusButton,new LinearLayout.LayoutParams(0,dp(UiTokens.MIN_TOUCH_TARGET),1));
                 CheckBox check=new CheckBox(context);
                 check.setContentDescription("Выбрать для split-screen: "+(w.title==null?"Окно":w.title));
-                check.setButtonTintList(ColorStateList.valueOf(0xff0067c0));
+                check.setButtonTintList(ColorStateList.valueOf(UiTokens.accentLight()));
                 check.setChecked(false);
                 check.setOnCheckedChangeListener((button,checked)->{
                     if(checked){if(selected.size()>=2){button.setChecked(false);return;}selected.add(w);}
                     else selected.remove(w);
                     enterPair.setEnabled(selected.size()==2); // U-03
                 });
-                row.addView(check,new LinearLayout.LayoutParams(dp(48),dp(44)));
-                LinearLayout.LayoutParams rowLp=new LinearLayout.LayoutParams(-1,dp(44));rowLp.bottomMargin=dp(6);list.addView(row,rowLp); // U-03
+                row.addView(check,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+                LinearLayout.LayoutParams rowLp=new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET));rowLp.bottomMargin=dp(6);list.addView(row,rowLp); // U-03
             }else if(w.state==Win.State.MINIMIZED||w.stackId==controller.freeformStackId()){
                 Button item=new Button(context);item.setText((w.title==null?"Окно":w.title)+"  ·  "+w.state+" · стол "+(w.desktopId+1));styleButton(item,dark);
                 item.setOnClickListener(v->{
@@ -105,14 +105,14 @@ public final class TaskViewOverlay {
                     dismiss();
                 });
                 item.setOnLongClickListener(v->{chooseDesktop(w);return true;});
-                LinearLayout.LayoutParams itemLp=new LinearLayout.LayoutParams(-1,dp(44));itemLp.bottomMargin=dp(6);list.addView(item,itemLp); // U-03
+                LinearLayout.LayoutParams itemLp=new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET));itemLp.bottomMargin=dp(6);list.addView(item,itemLp); // U-03
             }
         }
-        LinearLayout.LayoutParams enterLp=new LinearLayout.LayoutParams(-1,dp(44));enterLp.topMargin=dp(8);card.addView(enterPair,enterLp); // U-03
+        LinearLayout.LayoutParams enterLp=new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET));enterLp.topMargin=dp(8);card.addView(enterPair,enterLp); // U-03
         if(controller.hasDockedPair()){
-            Button exitPair=new Button(context);exitPair.setText("Выйти из docked split");styleButton(exitPair,dark);exitPair.setOnClickListener(v->{controller.exitDockedPair();dismiss();});LinearLayout.LayoutParams exitLp=new LinearLayout.LayoutParams(-1,dp(44));exitLp.topMargin=dp(8);card.addView(exitPair,exitLp);
+            Button exitPair=new Button(context);exitPair.setText("Выйти из docked split");styleButton(exitPair,dark);exitPair.setOnClickListener(v->{controller.exitDockedPair();dismiss();});LinearLayout.LayoutParams exitLp=new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET));exitLp.topMargin=dp(8);card.addView(exitPair,exitLp);
         }
-        Button close=new Button(context);close.setText("Закрыть Task View");styleButton(close,dark);close.setOnClickListener(v->dismiss());LinearLayout.LayoutParams closeLp=new LinearLayout.LayoutParams(-1,dp(44));closeLp.topMargin=dp(8);card.addView(close,closeLp);
+        Button close=new Button(context);close.setText("Закрыть Task View");styleButton(close,dark);close.setOnClickListener(v->dismiss());LinearLayout.LayoutParams closeLp=new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET));closeLp.topMargin=dp(8);card.addView(close,closeLp);
         android.util.DisplayMetrics metrics=new android.util.DisplayMetrics();wm.getDefaultDisplay().getMetrics(metrics);
         int cardWidth=Math.max(dp(240),Math.min(dp(680),metrics.widthPixels-dp(32)));
         shell.addView(card,new LinearLayout.LayoutParams(cardWidth,-2)); // F-15: shell is a LinearLayout
@@ -141,10 +141,10 @@ public final class TaskViewOverlay {
     }
     public void dismiss(){if(root!=null)try{wm.removeView(root);}catch(RuntimeException ignored){}root=null;if(active==this)active=null;}
     private void styleButton(Button button,boolean dark){
-        button.setAllCaps(false);button.setTextSize(14);button.setTextColor(dark?0xfff5f5f5:0xff202020);
-        GradientDrawable normal=round(dark?0xff383838:0xffe8e8e8,8);
-        GradientDrawable hover=round(dark?0xff454545:0xffdedede,8);
-        GradientDrawable pressed=round(dark?0xff525252:0xffd2d2d2,8);
+        button.setAllCaps(false);button.setTextSize(UiTokens.TEXT_LABEL);button.setTextColor(UiTokens.textOnSurface(dark));
+        GradientDrawable normal=round(UiTokens.surfaceButton(dark),UiTokens.RADIUS_MEDIUM);
+        GradientDrawable hover=round(UiTokens.surfaceHoverSoft(dark),UiTokens.RADIUS_MEDIUM);
+        GradientDrawable pressed=round(UiTokens.surfacePressedSoft(dark),UiTokens.RADIUS_MEDIUM);
         button.setBackground(normal);
         button.setOnHoverListener((v,e)->{
             if(e.getActionMasked()==android.view.MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==android.view.MotionEvent.ACTION_HOVER_MOVE)v.setBackground(hover);

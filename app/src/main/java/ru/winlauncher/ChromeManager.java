@@ -174,14 +174,14 @@ private boolean focusOnlyIfNeeded(Win w){Win focused=controller.focusedWindow();
 private void showFullscreenSystemMenu(Win w){
     if(floatingSystemMenu!=null)try{windowManager.removeView(floatingSystemMenu);}catch(RuntimeException ignored){}
     LinearLayout panel=new LinearLayout(context);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(6),dp(6),dp(6),dp(6));
-    GradientDrawable bg=new GradientDrawable();bg.setColor(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9);bg.setCornerRadius(0);panel.setBackground(bg);
+    GradientDrawable bg=new GradientDrawable();bg.setColor(UiTokens.surface(prefs.darkTheme()));bg.setCornerRadius(0);panel.setBackground(bg);
     ArrayList<String> labels=new ArrayList<>();if(controller.isDockedPairMember(w))labels.add("Выйти из split");labels.add("Окно поверх рабочего стола");labels.add("Свернуть");labels.add("Закрыть");
     for(String label:labels){TextView row=menuRow(label);row.setOnClickListener(v->{try{windowManager.removeView(panel);}catch(RuntimeException ignored){}floatingSystemMenu=null;
         if(label.equals("Выйти из split"))controller.exitDockedPair(w);else if(label.equals("Окно поверх рабочего стола"))controller.maximize(w);else if(label.equals("Свернуть"))controller.minimize(w);else controller.close(w);
     });panel.addView(row,new LinearLayout.LayoutParams(-1,dp(36)));}
     WindowManager.LayoutParams p=new WindowManager.LayoutParams(dp(240),-2,WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,PixelFormat.OPAQUE);
-    p.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;p.y=dp(48);p.setTitle("WinLauncher fullscreen system menu");
+    p.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;p.y=controller.topInset()+dp(48);p.setTitle("WinLauncher fullscreen system menu");
     panel.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_OUTSIDE){try{windowManager.removeView(panel);}catch(RuntimeException ignored){}floatingSystemMenu=null;return true;}return false;});
     try{windowManager.addView(panel,p);floatingSystemMenu=panel;}catch(RuntimeException ignored){floatingSystemMenu=null;}
 }
@@ -190,7 +190,7 @@ private void showSystemMenu(Chrome chrome){
     ArrayList<String> labels=new ArrayList<>();Collections.addAll(labels,"Восстановить","Переместить","Изменить размер","Свернуть","Развернуть","На весь экран","Привязать влево","Привязать вправо","Snap Layouts");
     if(chrome.model.snapGroupId!=null)labels.add("Свернуть группу");labels.add("Закрыть");
     LinearLayout panel=new LinearLayout(context);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(6),dp(6),dp(6),dp(6));
-    GradientDrawable bg=new GradientDrawable();bg.setColor(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9);bg.setCornerRadius(8);bg.setStroke(dp(1),prefs.darkTheme()?0xff777777:0xffe0e0e0);panel.setBackground(bg);
+    GradientDrawable bg=new GradientDrawable();bg.setColor(UiTokens.surface(prefs.darkTheme()));bg.setCornerRadius(UiTokens.RADIUS_MEDIUM);bg.setStroke(dp(1),UiTokens.outlineSoft(prefs.darkTheme()));panel.setBackground(bg);
     // M-02: only one system menu at a time.
     if(activePopup!=null){try{activePopup.dismiss();}catch(RuntimeException ignored){}activePopup=null;}
     PopupWindow popup=new PopupWindow(panel,dp(220),-2,true);popup.setBackgroundDrawable(bg);popup.setOutsideTouchable(true);activePopup=popup;
@@ -205,20 +205,20 @@ private void showSystemMenu(Chrome chrome){
     try{popup.showAsDropDown(chrome.dragArea,0,0);}catch(RuntimeException ignored){}
 }
 private TextView menuRow(String label){
-    TextView row=new TextView(context);row.setText(label);row.setTextSize(14);row.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));row.setTextColor(prefs.darkTheme()?0xffffffff:0xff1a1a1a);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),0,dp(10),0);row.setMinHeight(dp(32));row.setBackgroundColor(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9);
-    GradientDrawable normal=rounded(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9),hover=rounded(prefs.darkTheme()?0xff454545:0xffe5e5e5),pressed=rounded(prefs.darkTheme()?0xff555555:0xffe0e0e0);
+    TextView row=new TextView(context);row.setText(label);row.setTextSize(UiTokens.TEXT_LABEL);row.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));row.setTextColor(UiTokens.textPrimary(prefs.darkTheme()));row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(10),0,dp(10),0);row.setMinHeight(dp(UiTokens.MENU_ROW_HEIGHT));row.setBackgroundColor(UiTokens.surface(prefs.darkTheme()));
+    GradientDrawable normal=rounded(UiTokens.surface(prefs.darkTheme())),hover=rounded(UiTokens.surfaceHover(prefs.darkTheme())),pressed=rounded(UiTokens.surfacePressed(prefs.darkTheme()));
     row.setBackground(normal);
     row.setOnHoverListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE)v.setBackground(hover);else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT)v.setBackground(normal);return false;});
     row.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN)v.setBackground(pressed);else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL)v.setBackground(v.isHovered()?hover:normal);return false;});return row;
 }
-private GradientDrawable rounded(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(8);return d;
+private GradientDrawable rounded(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(UiTokens.RADIUS_MEDIUM);return d;
 }
 private void showShakePreview(){
-    dismissShakePreview();boolean dark=prefs.darkTheme();TextView chip=new TextView(context);chip.setText("Отпустите, чтобы свернуть остальные окна");chip.setTextSize(14);chip.setTextColor(dark?0xfff5f5f5:0xff202020);chip.setPadding(dp(16),dp(10),dp(16),dp(10));
+    dismissShakePreview();boolean dark=prefs.darkTheme();TextView chip=new TextView(context);chip.setText("Отпустите, чтобы свернуть остальные окна");chip.setTextSize(UiTokens.TEXT_LABEL);chip.setTextColor(UiTokens.textOnSurface(dark));chip.setPadding(dp(16),dp(10),dp(16),dp(10));
     GradientDrawable bg=new GradientDrawable();bg.setColor(dark?0xff2b2b2b:0xfff9f9f9);bg.setCornerRadius(0);bg.setStroke(dp(1),0xff888888);chip.setBackground(bg);
     WindowManager.LayoutParams p=new WindowManager.LayoutParams(-2,-2,WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE|WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.OPAQUE);
-    p.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;p.y=dp(48);p.setTitle("WinLauncher shake preview");try{windowManager.addView(chip,p);shakePreview=chip;}catch(RuntimeException ignored){shakePreview=null;}
+    p.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;p.y=controller.topInset()+dp(48);p.setTitle("WinLauncher shake preview");try{windowManager.addView(chip,p);shakePreview=chip;}catch(RuntimeException ignored){shakePreview=null;}
 }
 private void dismissShakePreview(){if(shakePreview!=null)try{if(shakePreview.getParent()!=null)windowManager.removeView(shakePreview);}catch(RuntimeException ignored){}shakePreview=null;}
 private void status(String message){if(statusListener!=null)statusListener.onStatus(message);}
@@ -229,11 +229,11 @@ private final class Chrome {
     final LinearLayout root,dragArea;final TextView title,minimize,maximize,close;final WindowManager.LayoutParams params;
     Win model;int lastLeft=Integer.MIN_VALUE,lastTop=Integer.MIN_VALUE,lastWidth=-1;boolean active,hoverLayoutArmed;Runnable showLayoutFlyout;
     Chrome(Win model){
-        this.model=model;root=new LinearLayout(context);root.setOrientation(LinearLayout.HORIZONTAL);root.setGravity(Gravity.CENTER_VERTICAL);root.setPadding(dp(10),0,0,0);root.setBackground(headerBackground(0xfff3f3f3));
+        this.model=model;root=new LinearLayout(context);root.setOrientation(LinearLayout.HORIZONTAL);root.setGravity(Gravity.CENTER_VERTICAL);root.setPadding(dp(10),0,0,0);root.setBackground(headerBackground(UiTokens.chromeFocused(false)));
         dragArea=new LinearLayout(context);dragArea.setOrientation(LinearLayout.HORIZONTAL);dragArea.setGravity(Gravity.CENTER_VERTICAL);
         ImageView icon=new ImageView(context);icon.setImageDrawable(loadIcon(model.packageName));dragArea.addView(icon,new LinearLayout.LayoutParams(dp(16),dp(16)));
         icon.setOnClickListener(v->{if(!focusOnlyIfNeeded(this.model))showSystemMenu(this);});
-        title=new TextView(context);title.setTextSize(12);title.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));title.setSingleLine(true);title.setEllipsize(TextUtils.TruncateAt.END);title.setPadding(dp(10),0,dp(4),0);dragArea.addView(title,new LinearLayout.LayoutParams(0,-1,1f));
+        title=new TextView(context);title.setTextSize(UiTokens.TEXT_CAPTION);title.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));title.setSingleLine(true);title.setEllipsize(TextUtils.TruncateAt.END);title.setPadding(dp(10),0,dp(4),0);dragArea.addView(title,new LinearLayout.LayoutParams(0,-1,1f));
         root.addView(dragArea,new LinearLayout.LayoutParams(0,titleHeight,1f));
         minimize=makeButton("—");maximize=makeButton("□");close=makeButton("×");
         minimize.setContentDescription("Свернуть окно");close.setContentDescription("Закрыть окно");
@@ -276,15 +276,15 @@ private final class Chrome {
         int visibility=showButtons?View.VISIBLE:View.GONE;minimize.setVisibility(visibility);maximize.setVisibility(visibility);close.setVisibility(visibility);
         LinearLayout.LayoutParams drag=(LinearLayout.LayoutParams)dragArea.getLayoutParams();if(showButtons){drag.width=0;drag.weight=1f;minimize.getLayoutParams().width=buttonWidth;maximize.getLayoutParams().width=buttonWidth;close.getLayoutParams().width=buttonWidth;}else{drag.width=Math.max(1,width);drag.weight=0f;}dragArea.setLayoutParams(drag);root.setClipChildren(true);
     }
-    void setActive(boolean value){active=value;boolean dark=prefs.darkTheme();root.setBackground(headerBackground(dark?(value?0xff202020:0xff2b2b2b):(value?0xfff3f3f3:0xfffbfbfb)));title.setTextColor(dark?(value?0xffffffff:0xff8a8a8a):(value?0xff1a1a1a:0xff5c5c5c));int color=dark?(value?0xfff5f5f5:0xff999999):(value?0xff202020:0xff808080);minimize.setTextColor(color);maximize.setTextColor(color);close.setTextColor(color);
+    void setActive(boolean value){active=value;boolean dark=prefs.darkTheme();root.setBackground(headerBackground(dark?(value?UiTokens.chromeFocused(dark):UiTokens.chromeIdle(dark)):(value?UiTokens.chromeFocused(false):UiTokens.chromeIdle(false))));title.setTextColor(dark?(value?UiTokens.textOnAccent():UiTokens.textChromeIdle(dark)):(value?UiTokens.textPrimary(false):UiTokens.textChromeIdle(false)));int color=dark?(value?UiTokens.textPrimary(dark):UiTokens.textDisabled(dark)):(value?UiTokens.textOnSurface(false):UiTokens.textDisabled(false));minimize.setTextColor(color);maximize.setTextColor(color);close.setTextColor(color);
         // BUG-16: the buttons kept the background from construction time, so after a theme
         // switch the (now light) text sat on the old light background in the dark theme.
-        int buttonBg=dark?0xff2b2b2b:0xfff9f9f9;minimize.setBackgroundColor(buttonBg);maximize.setBackgroundColor(buttonBg);close.setBackgroundColor(buttonBg);}
-    private GradientDrawable headerBackground(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(0);d.setStroke(dp(1),0xff777777);return d;}
+        int buttonBg=UiTokens.surface(dark);minimize.setBackgroundColor(buttonBg);maximize.setBackgroundColor(buttonBg);close.setBackgroundColor(buttonBg);}
+    private GradientDrawable headerBackground(int color){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(0);d.setStroke(dp(1),UiTokens.chromeBorder());return d;}
     private TextView makeButton(String text){
-        TextView b=new TextView(context);b.setText(text);b.setTextSize(17);b.setGravity(Gravity.CENTER);b.setTextColor(Color.BLACK);b.setBackgroundColor(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9);
-        b.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN){v.setBackgroundColor(v==close?0xffb22a1b:(prefs.darkTheme()?0xff454545:0xffe5e5e5));if(v==close)((TextView)v).setTextColor(Color.WHITE);}else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL){v.setBackgroundColor(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9);((TextView)v).setTextColor(prefs.darkTheme()?(active?0xfff5f5f5:0xff999999):(active?0xff202020:0xff808080));if(v==maximize)handler.removeCallbacks(showLayoutFlyout);}return false;});
-        b.setOnHoverListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER){v.setBackgroundColor(v==close?0xffc42b1c:(prefs.darkTheme()?0xff454545:0xffe5e5e5));if(v==close)((TextView)v).setTextColor(Color.WHITE);if(v==maximize)handler.postDelayed(showLayoutFlyout,SNAP_HOVER_DELAY_MS);}else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT){v.setBackgroundColor(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9);((TextView)v).setTextColor(prefs.darkTheme()?(active?0xfff5f5f5:0xff999999):(active?0xff202020:0xff808080));if(v==maximize)handler.removeCallbacks(showLayoutFlyout);}return false;});return b;
+        TextView b=new TextView(context);b.setText(text);b.setTextSize(UiTokens.TEXT_GLYPH);b.setGravity(Gravity.CENTER);b.setTextColor(UiTokens.textPrimary(false));b.setBackgroundColor(UiTokens.surface(prefs.darkTheme()));
+        b.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN){v.setBackgroundColor(v==close?UiTokens.dangerPressed():UiTokens.surfaceHover(prefs.darkTheme()));if(v==close)((TextView)v).setTextColor(UiTokens.textOnAccent());}else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL){v.setBackgroundColor(UiTokens.surface(prefs.darkTheme()));((TextView)v).setTextColor(prefs.darkTheme()?(active?UiTokens.textPrimary(true):UiTokens.textDisabled(true)):(active?UiTokens.textOnSurface(false):UiTokens.textDisabled(false)));if(v==maximize)handler.removeCallbacks(showLayoutFlyout);}return false;});
+        b.setOnHoverListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER){v.setBackgroundColor(v==close?UiTokens.danger():UiTokens.surfaceHover(prefs.darkTheme()));if(v==close)((TextView)v).setTextColor(UiTokens.textOnAccent());if(v==maximize)handler.postDelayed(showLayoutFlyout,SNAP_HOVER_DELAY_MS);}else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT){v.setBackgroundColor(UiTokens.surface(prefs.darkTheme()));((TextView)v).setTextColor(prefs.darkTheme()?(active?UiTokens.textPrimary(true):UiTokens.textDisabled(true)):(active?UiTokens.textOnSurface(false):UiTokens.textDisabled(false)));if(v==maximize)handler.removeCallbacks(showLayoutFlyout);}return false;});return b;
     }
     private Drawable loadIcon(String packageName){try{return context.getPackageManager().getApplicationIcon(packageName);}catch(Exception e){return context.getApplicationInfo().loadIcon(context.getPackageManager());}}
 }

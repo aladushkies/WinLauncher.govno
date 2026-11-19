@@ -65,17 +65,17 @@ public final class DesktopActivity extends Activity {
     private void build(){
         FrameLayout frame=new FrameLayout(this);wallpaper=new BloomView();frame.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout screen=new LinearLayout(this);screen.setOrientation(LinearLayout.VERTICAL);screen.setPadding(dp(12),dp(12),dp(12),dp(8));
-        TextView title=new TextView(this);title.setText("Рабочий стол");title.setTextColor(0xffffffff);title.setTextSize(20);screen.addView(title);
+        TextView title=new TextView(this);title.setText("Рабочий стол");title.setTextColor(UiTokens.textOnAccent());title.setTextSize(UiTokens.TEXT_HEADING);screen.addView(title);
         LinearLayout icons=new LinearLayout(this);icons.setOrientation(LinearLayout.HORIZONTAL);icons.setGravity(Gravity.CENTER_VERTICAL); // U-06: one row, not a 276dp stack
         addDesktopIcon(icons,"🌐","Edge Lite",()->startActivity(new Intent(this,EdgeLiteActivity.class)));
         addDesktopIcon(icons,"▦","Добавить виджет",this::showWidgetPicker);
         addDesktopIcon(icons,"⚙","Параметры",()->startActivity(new Intent(this,LauncherSettingsActivity.class)));
-        Button apps=new Button(this);apps.setText("Все приложения");apps.setOnClickListener(v->showApps());screen.addView(apps,new LinearLayout.LayoutParams(dp(190),dp(44)));
+        Button apps=new Button(this);apps.setText("Все приложения");apps.setOnClickListener(v->showApps());screen.addView(apps,new LinearLayout.LayoutParams(dp(190),dp(UiTokens.MIN_TOUCH_TARGET)));
         screen.addView(icons,new LinearLayout.LayoutParams(-1,dp(100)));
 
         ScrollView widgetScroll=new ScrollView(this);widgetScroll.setFillViewport(true);widgetContainer=new LinearLayout(this);widgetContainer.setOrientation(LinearLayout.VERTICAL);widgetContainer.setPadding(0,dp(4),0,dp(4));widgetScroll.addView(widgetContainer);
         screen.addView(widgetScroll,new LinearLayout.LayoutParams(-1,0,1));
-        TextView taskbar=new TextView(this);desktopClock=taskbar;taskbar.setText("⊞     WinLauncher                         "+new java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault()).format(new java.util.Date()));taskbar.setTextColor(prefs.darkTheme()?0xfff5f5f5:0xff1a1a1a);taskbar.setGravity(Gravity.CENTER_VERTICAL);taskbar.setPadding(dp(16),0,dp(16),0);taskbar.setBackgroundColor(prefs.darkTheme()?0xff202020:0xffe8e8e8);screen.addView(taskbar,new LinearLayout.LayoutParams(-1,dp(48)));
+        TextView taskbar=new TextView(this);desktopClock=taskbar;taskbar.setText("⊞     WinLauncher                         "+new java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault()).format(new java.util.Date()));taskbar.setTextColor(UiTokens.textPrimary(prefs.darkTheme()));taskbar.setGravity(Gravity.CENTER_VERTICAL);taskbar.setPadding(dp(16),0,dp(16),0);taskbar.setBackgroundColor(prefs.darkTheme()?0xff202020:0xffe8e8e8);screen.addView(taskbar,new LinearLayout.LayoutParams(-1,dp(48)));
         frame.addView(screen,new FrameLayout.LayoutParams(-1,-1));setContentView(frame);
         attachBackgroundHandlers(wallpaper);
         // BUG-07: the widget ScrollView covers most of the desktop and swallows touches, so
@@ -93,9 +93,9 @@ public final class DesktopActivity extends Activity {
         target.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN&&(e.getButtonState()&MotionEvent.BUTTON_SECONDARY)!=0){showBackgroundMenu();return true;}return false;});
     }
     private void addDesktopIcon(LinearLayout parent,String glyph,String label,Runnable action){
-        LinearLayout tile=new LinearLayout(this);tile.setOrientation(LinearLayout.VERTICAL);tile.setGravity(Gravity.CENTER);tile.setPadding(dp(8),dp(8),dp(8),dp(8));tile.setBackgroundColor(0xff264678);
-        TextView icon=new TextView(this);icon.setText(glyph);icon.setTextSize(28);icon.setTextColor(0xffffffff);icon.setGravity(Gravity.CENTER);tile.addView(icon,new LinearLayout.LayoutParams(dp(64),dp(48)));
-        TextView text=new TextView(this);text.setText(label);text.setTextColor(0xffffffff);text.setTextSize(12);text.setGravity(Gravity.CENTER);tile.addView(text);
+        LinearLayout tile=new LinearLayout(this);tile.setOrientation(LinearLayout.VERTICAL);tile.setGravity(Gravity.CENTER);tile.setPadding(dp(8),dp(8),dp(8),dp(8));tile.setBackgroundColor(UiTokens.desktopTile());
+        TextView icon=new TextView(this);icon.setText(glyph);icon.setTextSize(UiTokens.TEXT_TILE);icon.setTextColor(UiTokens.textOnAccent());icon.setGravity(Gravity.CENTER);tile.addView(icon,new LinearLayout.LayoutParams(dp(64),dp(UiTokens.MIN_TOUCH_TARGET)));
+        TextView text=new TextView(this);text.setText(label);text.setTextColor(UiTokens.textOnAccent());text.setTextSize(UiTokens.TEXT_CAPTION);text.setGravity(Gravity.CENTER);tile.addView(text);
         tile.setOnClickListener(v->action.run());tile.setOnLongClickListener(v->{showBackgroundMenu();return true;});LinearLayout.LayoutParams tileLp=new LinearLayout.LayoutParams(dp(96),dp(92));tileLp.setMargins(dp(6),dp(6),dp(6),dp(6));parent.addView(tile,tileLp);
     }
         private void showBackgroundMenu(){
@@ -129,7 +129,7 @@ public final class DesktopActivity extends Activity {
         PackageManager pm=getPackageManager();Intent query=new Intent(Intent.ACTION_MAIN,null);query.addCategory(Intent.CATEGORY_LAUNCHER);List<ResolveInfo> apps=pm.queryIntentActivities(query,0);Collections.sort(apps,(a,b)->String.valueOf(a.loadLabel(pm)).compareToIgnoreCase(String.valueOf(b.loadLabel(pm))));
         ScrollView scroll=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);scroll.addView(list);
         if(appsDialog!=null&&appsDialog.isShowing())appsDialog.dismiss();
-        for(ResolveInfo app:apps){TextView item=new TextView(this);item.setText("  "+app.loadLabel(pm));item.setTextSize(16);item.setGravity(Gravity.CENTER_VERTICAL);item.setPadding(dp(8),0,dp(8),0);list.addView(item,new LinearLayout.LayoutParams(-1,dp(44)));item.setOnClickListener(v->{if(appsDialog!=null){appsDialog.dismiss();appsDialog=null;}try{Intent launch=pm.getLaunchIntentForPackage(app.activityInfo.packageName);if(launch!=null)startActivity(launch);}catch(RuntimeException ignored){}});}
+        for(ResolveInfo app:apps){TextView item=new TextView(this);item.setText("  "+app.loadLabel(pm));item.setTextSize(UiTokens.TEXT_ITEM);item.setGravity(Gravity.CENTER_VERTICAL);item.setPadding(dp(8),0,dp(8),0);list.addView(item,new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET)));item.setOnClickListener(v->{if(appsDialog!=null){appsDialog.dismiss();appsDialog=null;}try{Intent launch=pm.getLaunchIntentForPackage(app.activityInfo.packageName);if(launch!=null)startActivity(launch);}catch(RuntimeException ignored){}});}
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Приложения").setView(scroll).setNegativeButton("Закрыть",null).show();
         appsDialog=dialog;
         dialog.setOnDismissListener(d->{if(appsDialog==dialog)appsDialog=null;});
@@ -197,8 +197,8 @@ public final class DesktopActivity extends Activity {
             // U-01 / I-08: stack a 28dp delete strip ABOVE the widget in a vertical
             // LinearLayout so the strip neither covers widget content nor clips the × glyph.
             LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);
-            LinearLayout strip=new LinearLayout(this);strip.setOrientation(LinearLayout.HORIZONTAL);strip.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);strip.setPadding(0,0,dp(4),0);strip.setBackgroundColor(prefs.darkTheme()?0xff333333:0xff444444);
-            TextView del=new TextView(this);del.setText("×");del.setTextColor(0xffffffff);del.setTextSize(16);del.setGravity(Gravity.CENTER);del.setPadding(dp(12),0,dp(12),0);
+            LinearLayout strip=new LinearLayout(this);strip.setOrientation(LinearLayout.HORIZONTAL);strip.setGravity(Gravity.RIGHT|Gravity.CENTER_VERTICAL);strip.setPadding(0,0,dp(4),0);strip.setBackgroundColor(UiTokens.widgetStrip(prefs.darkTheme()));
+            TextView del=new TextView(this);del.setText("×");del.setTextColor(UiTokens.textOnAccent());del.setTextSize(UiTokens.TEXT_ITEM);del.setGravity(Gravity.CENTER);del.setPadding(dp(20),0,dp(20),0);
             del.setContentDescription("Удалить виджет");
             del.setOnClickListener(v->{new AlertDialog.Builder(this).setTitle("Виджет").setItems(new String[]{"Удалить виджет"},(d,which)->removeWidget(id)).setNegativeButton("Отмена",null).show();});
             strip.addView(del,new LinearLayout.LayoutParams(-2,-1));
@@ -223,10 +223,9 @@ public final class DesktopActivity extends Activity {
     private int dp(float value){return(int)(value*getResources().getDisplayMetrics().density+.5f);}
     private final class BloomView extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
-        BloomView(){super(DesktopActivity.this);setBackgroundColor(0xff163365);}
-        @Override protected void onDraw(Canvas canvas){super.onDraw(canvas);int index=prefs==null?0:prefs.wallpaperIndex()%3;int[] bases={0xff15345f,0xff182642,0xff23324a};canvas.drawColor(bases[index]);float cx=getWidth()*.67f,cy=getHeight()*.55f,r=Math.min(getWidth(),getHeight())*.30f;
-            int[][] colors={{0xff187bd1,0xff14a5d7,0xff3158c9,0xff6843c2},{0xff1c9a9a,0xff31a76c,0xff3479bd,0xff6b59bb},{0xff5b78d0,0xffbf5c95,0xffe48b48,0xff387cb8}};
-            for(int i=0;i<4;i++){paint.setColor(colors[index][i]);Path petal=new Path();float angle=(float)(i*Math.PI/2);float sx=cx+(float)Math.cos(angle)*r*.14f,sy=cy+(float)Math.sin(angle)*r*.14f;petal.moveTo(sx,sy);petal.cubicTo(cx+(float)Math.cos(angle-.85)*r*.15f,cy+(float)Math.sin(angle-.85)*r*.15f,cx+(float)Math.cos(angle-.6)*r*1.2f,cy+(float)Math.sin(angle-.6)*r*1.2f,cx+(float)Math.cos(angle)*r*1.25f,cy+(float)Math.sin(angle)*r*1.25f);petal.cubicTo(cx+(float)Math.cos(angle+.6)*r*1.2f,cy+(float)Math.sin(angle+.6)*r*1.2f,cx+(float)Math.cos(angle+.85)*r*.15f,cy+(float)Math.sin(angle+.85)*r*.15f,sx,sy);petal.close();canvas.drawPath(petal,paint);}
+        BloomView(){super(DesktopActivity.this);setBackgroundColor(UiTokens.wallpaperBase());}
+        @Override protected void onDraw(Canvas canvas){super.onDraw(canvas);int index=prefs==null?0:prefs.wallpaperIndex()%3;canvas.drawColor(UiTokens.wallpaperBackdrop(index));float cx=getWidth()*.67f,cy=getHeight()*.55f,r=Math.min(getWidth(),getHeight())*.30f;
+            for(int i=0;i<4;i++){paint.setColor(UiTokens.wallpaperPetal(index,i));Path petal=new Path();float angle=(float)(i*Math.PI/2);float sx=cx+(float)Math.cos(angle)*r*.14f,sy=cy+(float)Math.sin(angle)*r*.14f;petal.moveTo(sx,sy);petal.cubicTo(cx+(float)Math.cos(angle-.85)*r*.15f,cy+(float)Math.sin(angle-.85)*r*.15f,cx+(float)Math.cos(angle-.6)*r*1.2f,cy+(float)Math.sin(angle-.6)*r*1.2f,cx+(float)Math.cos(angle)*r*1.25f,cy+(float)Math.sin(angle)*r*1.25f);petal.cubicTo(cx+(float)Math.cos(angle+.6)*r*1.2f,cy+(float)Math.sin(angle+.6)*r*1.2f,cx+(float)Math.cos(angle+.85)*r*.15f,cy+(float)Math.sin(angle+.85)*r*.15f,sx,sy);petal.close();canvas.drawPath(petal,paint);}
         }
     }
 }

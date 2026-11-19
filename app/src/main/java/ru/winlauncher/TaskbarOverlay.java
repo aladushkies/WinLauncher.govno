@@ -97,12 +97,12 @@ public final class TaskbarOverlay implements WindowController.Listener {
         if(bar==null)create();if(bar==null)return;
         // BUG-17: the bar background was only set in create(), so a theme switch left the
         // bar (and the cached clock) in the old theme until the bar was recreated.
-        bar.setBackground(round(prefs.darkTheme()?0xff1c1c1c:0xfff3f3f3,0));
+        bar.setBackground(round(UiTokens.surfaceBar(prefs.darkTheme()),UiTokens.RADIUS_NONE));
         bar.removeAllViews();
-        LinearLayout.LayoutParams startLp=new LinearLayout.LayoutParams(dp(44),-1);startLp.setMarginEnd(dp(4));startLp.rightMargin=dp(4);
-        TextView start=button("⊞",dp(44));start.setOnClickListener(v->{if(actions!=null)actions.openStart();});bar.addView(start,startLp);
-        LinearLayout.LayoutParams tvLp=new LinearLayout.LayoutParams(dp(44),-1);tvLp.setMarginEnd(dp(4));tvLp.rightMargin=dp(4);
-        TextView taskView=button("▧",dp(44));taskView.setOnClickListener(v->{if(actions!=null)actions.openTaskView();});bar.addView(taskView,tvLp);
+        LinearLayout.LayoutParams startLp=new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),-1);startLp.setMarginEnd(dp(4));startLp.rightMargin=dp(4);
+        TextView start=button("⊞",dp(UiTokens.MIN_TOUCH_TARGET));start.setOnClickListener(v->{if(actions!=null)actions.openStart();});bar.addView(start,startLp);
+        LinearLayout.LayoutParams tvLp=new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),-1);tvLp.setMarginEnd(dp(4));tvLp.rightMargin=dp(4);
+        TextView taskView=button("▧",dp(UiTokens.MIN_TOUCH_TARGET));taskView.setOnClickListener(v->{if(actions!=null)actions.openTaskView();});bar.addView(taskView,tvLp);
         int activeId=-1;for(Win w:windows)if(w.visible&&w.state!=Win.State.MINIMIZED&&(activeId<0||w.z>=zOf(windows,activeId)))activeId=w.taskId;
         final int currentActiveId=activeId;
         int taskBtnW=dp(prefs.mouseProfile()?44:52);
@@ -114,7 +114,7 @@ public final class TaskbarOverlay implements WindowController.Listener {
             if(w.stackId!=controller.freeformStackId()&&w.state!=Win.State.MINIMIZED&&!(temporary&&w.state==Win.State.FULLSCREEN))continue;
             String taskLabel=abbrev(w.title);
             if(w.state==Win.State.MINIMIZED)taskLabel="↗"+taskLabel;
-            TextView item=button(taskLabel,taskBtnW);if(w.state==Win.State.MINIMIZED)item.setTextColor(prefs.darkTheme()?0xffb0b0b0:0xff555555);
+            TextView item=button(taskLabel,taskBtnW);if(w.state==Win.State.MINIMIZED)item.setTextColor(UiTokens.textTaskMuted(prefs.darkTheme()));
             String taskTitle=w.title==null?"окно":w.title;
             item.setContentDescription(w.state==Win.State.MINIMIZED?"Восстановить окно: "+taskTitle:"Переключиться на окно: "+taskTitle);
             item.setOnClickListener(v->{if(w.state==Win.State.MINIMIZED)controller.restore(w);else if(w.state==Win.State.FULLSCREEN)controller.focus(w);else if(w.taskId==currentActiveId)controller.minimize(w);else controller.focus(w);});
@@ -139,11 +139,11 @@ public final class TaskbarOverlay implements WindowController.Listener {
     // background. One combined behavior now owns all three concerns.
         private void attachTaskButtonBehavior(TextView item,Win w,boolean isActive){
         boolean dark=prefs.darkTheme();
-        GradientDrawable normal=round(dark?0xff2b2b2b:0xfff9f9f9,dp(4));
+        GradientDrawable normal=round(UiTokens.surface(dark),dp(UiTokens.RADIUS_SMALL));
         // G-02: an active button carries white text, so its hover/pressed states stay blue.
-        GradientDrawable hover=round(isActive?0xff005a9e:(dark?0xff454545:0xffe5e5e5),dp(4));
-        GradientDrawable pressed=round(isActive?0xff004b85:(dark?0xff555555:0xffe0e0e0),dp(4));
-        GradientDrawable activeBg=round(0xff0067c0,dp(4));
+        GradientDrawable hover=round(isActive?0xff005a9e:UiTokens.surfaceHover(dark),dp(UiTokens.RADIUS_SMALL));
+        GradientDrawable pressed=round(isActive?0xff004b85:UiTokens.surfacePressed(dark),dp(UiTokens.RADIUS_SMALL));
+        GradientDrawable activeBg=round(UiTokens.accentLight(),dp(UiTokens.RADIUS_SMALL));
         item.setBackground(isActive?activeBg:normal);
         // F-13(a): the active item sits on solid blue, so its label is always white.
         if(isActive)item.setTextColor(Color.WHITE);
@@ -178,7 +178,7 @@ public final class TaskbarOverlay implements WindowController.Listener {
         LinearLayout panel=new LinearLayout(context);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(6),dp(6),dp(6),dp(6));
-        panel.setBackground(round(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9,8));
+        panel.setBackground(round(UiTokens.surface(prefs.darkTheme()),UiTokens.RADIUS_MEDIUM));
         PopupWindow popup=new PopupWindow(panel,dp(220),-2,true);
         popup.setOutsideTouchable(true);
         popup.setBackgroundDrawable(panel.getBackground());
@@ -189,12 +189,12 @@ public final class TaskbarOverlay implements WindowController.Listener {
         for(String label:labels){
             TextView row=new TextView(context);
             row.setText(label);
-            row.setTextSize(14);
-            row.setTextColor(prefs.darkTheme()?Color.WHITE:0xff1a1a1a);
+            row.setTextSize(UiTokens.TEXT_LABEL);
+            row.setTextColor(prefs.darkTheme()?UiTokens.textOnAccent():UiTokens.textPrimary(prefs.darkTheme()));
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(dp(10),0,dp(10),0);
-            row.setMinHeight(dp(32));
-            GradientDrawable normal=round(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9,8),hover=round(prefs.darkTheme()?0xff454545:0xffe5e5e5,8),pressed=round(prefs.darkTheme()?0xff555555:0xffe0e0e0,8);
+            row.setMinHeight(dp(UiTokens.MENU_ROW_HEIGHT));
+            GradientDrawable normal=round(UiTokens.surface(prefs.darkTheme()),UiTokens.RADIUS_MEDIUM),hover=round(UiTokens.surfaceHover(prefs.darkTheme()),UiTokens.RADIUS_MEDIUM),pressed=round(UiTokens.surfacePressed(prefs.darkTheme()),UiTokens.RADIUS_MEDIUM);
             row.setBackground(normal);
             row.setOnHoverListener((v,e)->{
                 if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE)v.setBackground(hover);
@@ -220,7 +220,7 @@ public final class TaskbarOverlay implements WindowController.Listener {
                     case "Закрыть окно":controller.close(w);break;
                 }
             });
-            panel.addView(row,new LinearLayout.LayoutParams(-1,dp(32)));
+            panel.addView(row,new LinearLayout.LayoutParams(-1,dp(UiTokens.MENU_ROW_HEIGHT)));
         }
         popup.setWindowLayoutType(WindowManager.LayoutParams.TYPE_SYSTEM_ALERT); // M-02
         try{
@@ -230,18 +230,20 @@ public final class TaskbarOverlay implements WindowController.Listener {
         }
     }
     private void create(){
-        bar=new LinearLayout(context);bar.setOrientation(LinearLayout.HORIZONTAL);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(2),dp(8),dp(2));bar.setBackground(round(prefs.darkTheme()?0xff1c1c1c:0xfff3f3f3,0));
+        bar=new LinearLayout(context);bar.setOrientation(LinearLayout.HORIZONTAL);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(8),dp(2),dp(8),dp(2));bar.setBackground(round(UiTokens.surfaceBar(prefs.darkTheme()),UiTokens.RADIUS_NONE));
         bar.setOnHoverListener((v,e)->{if(temporary&&(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE))renewTemporary();return false;});
         bar.setOnTouchListener((v,e)->{if(temporary&&(e.getActionMasked()==MotionEvent.ACTION_DOWN||e.getActionMasked()==MotionEvent.ACTION_MOVE))renewTemporary();return false;});
         params=new WindowManager.LayoutParams(WindowManager.LayoutParams.MATCH_PARENT,dp(prefs.mouseProfile()?48:56),WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL|WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,PixelFormat.OPAQUE);
-        params.gravity=Gravity.BOTTOM|Gravity.LEFT;params.setTitle("WinLauncher taskbar");
+        params.gravity=Gravity.BOTTOM|Gravity.LEFT;
+        // K-03: the bar rests above the navigation bar instead of behind it.
+        params.y=-controller.bottomInset();params.setTitle("WinLauncher taskbar");
         try{wm.addView(bar,params);}catch(RuntimeException e){bar=null;params=null;}
     }
-    private void updatePosition(boolean fullscreen){if(bar==null)return;params.height=dp(prefs.mouseProfile()?48:56);try{if(bar.getParent()!=null)wm.updateViewLayout(bar,params);}catch(RuntimeException ignored){}}
+    private void updatePosition(boolean fullscreen){if(bar==null)return;params.height=dp(prefs.mouseProfile()?48:56);params.y=-controller.bottomInset();try{if(bar.getParent()!=null)wm.updateViewLayout(bar,params);}catch(RuntimeException ignored){}}
     // M-06: the menu must not outlive its anchor bar.
     private void remove(){dismissJumpMenu();if(bar!=null)try{if(bar.getParent()!=null)wm.removeView(bar);}catch(RuntimeException ignored){}bar=null;params=null;clock=null;}
-    private TextView button(String text,int width){TextView v=new TextView(context);v.setText(text);v.setTextSize(13);v.setTextColor(prefs.darkTheme()?Color.WHITE:0xff1a1a1a);v.setGravity(Gravity.CENTER);GradientDrawable normal=round(prefs.darkTheme()?0xff2b2b2b:0xfff9f9f9,dp(4)),hover=round(prefs.darkTheme()?0xff454545:0xffe5e5e5,dp(4)),pressed=round(prefs.darkTheme()?0xff555555:0xffe0e0e0,dp(4));v.setBackground(normal);v.setOnHoverListener((view,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE)view.setBackground(hover);else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT)view.setBackground(normal);return false;});v.setOnTouchListener((view,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN)view.setBackground(pressed);else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL)view.setBackground(view.isHovered()?hover:normal);return false;});v.setLayoutParams(new LinearLayout.LayoutParams(width,-1));return v;}
+    private TextView button(String text,int width){TextView v=new TextView(context);v.setText(text);v.setTextSize(UiTokens.TEXT_BUTTON);v.setTextColor(prefs.darkTheme()?UiTokens.textOnAccent():UiTokens.textPrimary(prefs.darkTheme()));v.setGravity(Gravity.CENTER);GradientDrawable normal=round(UiTokens.surface(prefs.darkTheme()),dp(UiTokens.RADIUS_SMALL)),hover=round(UiTokens.surfaceHover(prefs.darkTheme()),dp(UiTokens.RADIUS_SMALL)),pressed=round(UiTokens.surfacePressed(prefs.darkTheme()),dp(UiTokens.RADIUS_SMALL));v.setBackground(normal);v.setOnHoverListener((view,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE)view.setBackground(hover);else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT)view.setBackground(normal);return false;});v.setOnTouchListener((view,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN)view.setBackground(pressed);else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL)view.setBackground(view.isHovered()?hover:normal);return false;});v.setLayoutParams(new LinearLayout.LayoutParams(width,-1));return v;}
     private GradientDrawable round(int color,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(radius);return d;}
     private String abbrev(String title){if(title==null||title.length()==0)return "□";return title.length()>2?title.substring(0,2):title;}
     private int dp(float x){return(int)(x*density+.5f);}

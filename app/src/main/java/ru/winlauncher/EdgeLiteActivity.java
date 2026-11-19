@@ -77,14 +77,14 @@ public final class EdgeLiteActivity extends Activity {
         super.onSaveInstanceState(out);
     }
     private void buildUi(){
-        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(prefs.darkTheme()?0xff202020:0xfff4f4f4);
-        HorizontalScrollView tabScroll=new HorizontalScrollView(this);tabScroll.setHorizontalScrollBarEnabled(false);tabStrip=new LinearLayout(this);tabStrip.setOrientation(LinearLayout.HORIZONTAL);tabScroll.addView(tabStrip);root.addView(tabScroll,new LinearLayout.LayoutParams(-1,dp(36)));
-        LinearLayout toolbar=new LinearLayout(this);toolbar.setGravity(Gravity.CENTER_VERTICAL);toolbar.setPadding(dp(4),0,dp(4),0);toolbar.setBackgroundColor(prefs.darkTheme()?0xff2b2b2b:0xffe8e8e8);
-        omnibox=new EditText(this);omnibox.setSingleLine(true);omnibox.setTextSize(13);omnibox.setHint("Поиск или адрес — DuckDuckGo");omnibox.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_URI);omnibox.setImeOptions(EditorInfo.IME_ACTION_GO);boolean dark=prefs.darkTheme();omnibox.setTextColor(dark?0xfff5f5f5:0xff1a1a1a);omnibox.setHintTextColor(dark?0xff9e9e9e:0xff666666);toolbar.addView(omnibox,new LinearLayout.LayoutParams(0,dp(40),1));
-        Button go=new Button(this);go.setText("↵");go.setMinWidth(0);go.setMinimumWidth(0);go.setPadding(0,0,0,0);go.setOnClickListener(v->navigateFromOmnibox());toolbar.addView(go,new LinearLayout.LayoutParams(dp(44),dp(40)));
-        Button history=new Button(this);history.setText("◷");history.setMinWidth(0);history.setMinimumWidth(0);history.setPadding(0,0,0,0);history.setOnClickListener(v->showHistory());toolbar.addView(history,new LinearLayout.LayoutParams(dp(40),dp(40)));
-        Button add=new Button(this);add.setText("+");add.setMinWidth(0);add.setMinimumWidth(0);add.setPadding(0,0,0,0);add.setOnClickListener(v->addTab("about:blank"));toolbar.addView(add,new LinearLayout.LayoutParams(dp(40),dp(40)));
-        root.addView(toolbar,new LinearLayout.LayoutParams(-1,dp(40)));
+        root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(UiTokens.pageSoft(prefs.darkTheme()));
+        HorizontalScrollView tabScroll=new HorizontalScrollView(this);tabScroll.setHorizontalScrollBarEnabled(false);tabStrip=new LinearLayout(this);tabStrip.setOrientation(LinearLayout.HORIZONTAL);tabScroll.addView(tabStrip);root.addView(tabScroll,new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET)));
+        LinearLayout toolbar=new LinearLayout(this);toolbar.setGravity(Gravity.CENTER_VERTICAL);toolbar.setPadding(dp(4),0,dp(4),0);toolbar.setBackgroundColor(UiTokens.surfaceButton(prefs.darkTheme()));
+        omnibox=new EditText(this);omnibox.setSingleLine(true);omnibox.setTextSize(UiTokens.TEXT_BUTTON);omnibox.setHint("Поиск или адрес — DuckDuckGo");omnibox.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_URI);omnibox.setImeOptions(EditorInfo.IME_ACTION_GO);boolean dark=prefs.darkTheme();omnibox.setTextColor(UiTokens.textPrimary(dark));omnibox.setHintTextColor(UiTokens.textHint(dark));toolbar.addView(omnibox,new LinearLayout.LayoutParams(0,dp(UiTokens.MIN_TOUCH_TARGET),1));
+        Button go=new Button(this);go.setText("↵");go.setMinWidth(0);go.setMinimumWidth(0);go.setPadding(0,0,0,0);go.setOnClickListener(v->navigateFromOmnibox());toolbar.addView(go,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+        Button history=new Button(this);history.setText("◷");history.setMinWidth(0);history.setMinimumWidth(0);history.setPadding(0,0,0,0);history.setOnClickListener(v->showHistory());toolbar.addView(history,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+        Button add=new Button(this);add.setText("+");add.setMinWidth(0);add.setMinimumWidth(0);add.setPadding(0,0,0,0);add.setOnClickListener(v->addTab("about:blank"));toolbar.addView(add,new LinearLayout.LayoutParams(dp(UiTokens.MIN_TOUCH_TARGET),dp(UiTokens.MIN_TOUCH_TARGET)));
+        root.addView(toolbar,new LinearLayout.LayoutParams(-1,dp(UiTokens.MIN_TOUCH_TARGET)));
         pageSlot=new FrameSlot(this);root.addView(pageSlot,new LinearLayout.LayoutParams(-1,0,1));
         omnibox.setOnEditorActionListener((v,action,event)->{if(action==EditorInfo.IME_ACTION_GO||action==EditorInfo.IME_ACTION_DONE){navigateFromOmnibox();return true;}return false;});
         setContentView(root);
@@ -125,10 +125,10 @@ public final class EdgeLiteActivity extends Activity {
             // D-01: the tab cell used to have a single click handler that always closed the tab.
             // Split it into a select zone (label) and a separate close button.
             boolean dark=prefs.darkTheme();
-            LinearLayout cell=new LinearLayout(this);cell.setOrientation(LinearLayout.HORIZONTAL);cell.setGravity(Gravity.CENTER_VERTICAL);cell.setBackgroundColor(tab==current?(dark?0xff2b2b2b:0xfff4f4f4):(dark?0xff3a3a3a:0xffd8d8d8));
-            TextView label=new TextView(this);String title=tab.title.length()>16?tab.title.substring(0,15)+"…":tab.title;label.setText((tab==current?"● ":"")+title);label.setTextColor(dark?0xfff5f5f5:0xff1a1a1a);label.setSingleLine(true);label.setGravity(Gravity.CENTER);label.setPadding(dp(10),0,dp(4),0);label.setOnClickListener(v->selectTab(tab));
+            LinearLayout cell=new LinearLayout(this);cell.setOrientation(LinearLayout.HORIZONTAL);cell.setGravity(Gravity.CENTER_VERTICAL);cell.setBackgroundColor(tab==current?(dark?UiTokens.surface(dark):UiTokens.pageSoft(false)):UiTokens.surfaceTab(dark));
+            TextView label=new TextView(this);String title=tab.title.length()>16?tab.title.substring(0,15)+"…":tab.title;label.setText((tab==current?"● ":"")+title);label.setTextColor(UiTokens.textPrimary(dark));label.setSingleLine(true);label.setGravity(Gravity.CENTER);label.setPadding(dp(10),0,dp(4),0);label.setOnClickListener(v->selectTab(tab));
             cell.addView(label,new LinearLayout.LayoutParams(-2,-1));
-            TextView closeBtn=new TextView(this);closeBtn.setText("×");closeBtn.setTextColor(dark?0xfff5f5f5:0xff1a1a1a);closeBtn.setGravity(Gravity.CENTER);closeBtn.setPadding(dp(4),0,dp(10),0);closeBtn.setOnClickListener(v->closeTab(tab));
+            TextView closeBtn=new TextView(this);closeBtn.setText("×");closeBtn.setTextColor(UiTokens.textPrimary(dark));closeBtn.setGravity(Gravity.CENTER);closeBtn.setPadding(dp(20),0,dp(20),0);closeBtn.setOnClickListener(v->closeTab(tab));
             cell.addView(closeBtn,new LinearLayout.LayoutParams(-2,-1));
             // BUG-03 (regression of D-01): the long-click listener used to sit on the cell, but
             // the clickable label and close button cover the whole cell and consume ACTION_DOWN,

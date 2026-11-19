@@ -96,11 +96,11 @@ public final class SnapController {
         StringBuilder text=new StringBuilder("Snap group · ");int count=0;
         for(Integer id:g.tasks.values()){Win w=controller.get(id);if(w==null)continue;if(count++>0)text.append(" + ");text.append(w.title==null?"Окно":w.title);}
         boolean dark=prefs.darkTheme();
-        TextView hint=new TextView(context);hint.setText(text.toString());hint.setTextColor(dark?0xfff5f5f5:0xff202020);hint.setTextSize(13);hint.setPadding(dp(14),dp(8),dp(14),dp(8));
+        TextView hint=new TextView(context);hint.setText(text.toString());hint.setTextColor(UiTokens.textOnSurface(dark));hint.setTextSize(UiTokens.TEXT_BUTTON);hint.setPadding(dp(14),dp(8),dp(14),dp(8));
         GradientDrawable bg=new GradientDrawable();bg.setColor(dark?0xff2b2b2b:0xfff9f9f9);bg.setCornerRadius(0);bg.setStroke(dp(1),dark?0xff777777:0xff888888);hint.setBackground(bg);
         WindowManager.LayoutParams p=new WindowManager.LayoutParams(-2,-2,WindowManager.LayoutParams.TYPE_SYSTEM_ALERT,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE|WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE|WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                PixelFormat.OPAQUE);p.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;p.y=dp(52);p.setTitle("WinLauncher Snap group hint");
+                PixelFormat.OPAQUE);p.gravity=Gravity.TOP|Gravity.CENTER_HORIZONTAL;p.y=controller.topInset()+dp(52);p.setTitle("WinLauncher Snap group hint");
         try{wm.addView(hint,p);groupHintView=hint;ui.postDelayed(hideGroupHint,1600L);}catch(RuntimeException ignored){groupHintView=null;}
     }
     public Rect boundsFor(String groupId,int cell){Group g=groups.get(groupId);RectF r=g==null?null:g.cells.get(cell);return r==null?null:cellRect(r,controller.workArea());}
@@ -298,7 +298,7 @@ public final class SnapController {
         boolean dark=new LauncherPrefs(context).darkTheme();
         LinearLayout panel=new LinearLayout(context); panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(8),dp(8),dp(8),dp(8));
-        GradientDrawable bg=new GradientDrawable(); bg.setColor(dark?0xff2b2b2b:0xfff9f9f9); bg.setCornerRadius(8); bg.setStroke(dp(1),dark?0xff777777:0xff888888);
+        GradientDrawable bg=new GradientDrawable(); bg.setColor(UiTokens.surface(dark)); bg.setCornerRadius(UiTokens.RADIUS_MEDIUM); bg.setStroke(dp(1),UiTokens.outline(dark));
         panel.setBackground(bg); 
         Layout[] ls=Layout.values();
         for(int row=0;row<2;row++) {
@@ -486,7 +486,7 @@ public final class SnapController {
         Assist(Group g,List<Integer> cells,List<Win> wins){group=g;freeCells=cells;candidates=wins;}
         void show(){
             boolean dark=new LauncherPrefs(context).darkTheme();
-            LinearLayout root=new LinearLayout(context);root.setOrientation(LinearLayout.VERTICAL);root.setGravity(Gravity.CENTER);root.setBackgroundColor(dark?0xff202020:0xfff4f4f4);
+            LinearLayout root=new LinearLayout(context);root.setOrientation(LinearLayout.VERTICAL);root.setGravity(Gravity.CENTER);root.setBackgroundColor(UiTokens.pageSoft(dark));
             TextView heading=new TextView(context);
             heading.setText("Snap Group · "+group.tasks.size()+" окно(а) · выберите следующее окно");
             // BUG-02 (regression of D-09): this comment used to sit mid-line and commented out
@@ -497,22 +497,22 @@ public final class SnapController {
             heading.setPadding(dp(12),dp(10),dp(12),dp(10));
             root.addView(heading);
             LinearLayout card=new LinearLayout(context);card.setOrientation(LinearLayout.HORIZONTAL);card.setPadding(dp(8),dp(8),dp(8),dp(8));
-            GradientDrawable bg=new GradientDrawable();bg.setColor(dark?0xff2b2b2b:0xfff7f7f7);bg.setCornerRadius(8);card.setBackground(bg);
+            GradientDrawable bg=new GradientDrawable();bg.setColor(UiTokens.surfaceAssist(dark));bg.setCornerRadius(UiTokens.RADIUS_MEDIUM);card.setBackground(bg);
             // BUG-20: with 6+ candidate windows the card row overflowed the screen; scroll it.
             android.widget.HorizontalScrollView cardScroll=new android.widget.HorizontalScrollView(context);
             cardScroll.setHorizontalScrollBarEnabled(false);
             cardScroll.addView(card);
             for(Win w:candidates){
                 LinearLayout item=new LinearLayout(context);item.setOrientation(LinearLayout.VERTICAL);item.setGravity(Gravity.CENTER);item.setPadding(dp(8),dp(6),dp(8),dp(6));
-                GradientDrawable itemNormal=new GradientDrawable();itemNormal.setColor(dark?0xff2b2b2b:0xfff7f7f7);itemNormal.setCornerRadius(8);
-                GradientDrawable itemHover=new GradientDrawable();itemHover.setColor(dark?0xff777777:0xffd9eaf7);itemHover.setCornerRadius(8);
-                GradientDrawable itemPressed=new GradientDrawable();itemPressed.setColor(dark?0xff5c5c5c:0xffb7d7f2);itemPressed.setCornerRadius(8);item.setBackground(itemNormal);
+                GradientDrawable itemNormal=new GradientDrawable();itemNormal.setColor(UiTokens.surfaceAssist(dark));itemNormal.setCornerRadius(UiTokens.RADIUS_MEDIUM);
+                GradientDrawable itemHover=new GradientDrawable();itemHover.setColor(UiTokens.surfaceHoverAccent(dark));itemHover.setCornerRadius(UiTokens.RADIUS_MEDIUM);
+                GradientDrawable itemPressed=new GradientDrawable();itemPressed.setColor(UiTokens.surfacePressedAccent(dark));itemPressed.setCornerRadius(UiTokens.RADIUS_MEDIUM);item.setBackground(itemNormal);
                 item.setOnHoverListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER)v.setBackground(itemHover);else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT)v.setBackground(itemNormal);return false;});
                 item.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN)v.setBackground(itemPressed);else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL)v.setBackground(v.isHovered()?itemHover:itemNormal);return false;});
-                ImageView preview=new ImageView(context);preview.setScaleType(ImageView.ScaleType.CENTER_INSIDE);preview.setBackgroundColor(dark?0xff3a3a3a:0xffe7e7e7);
+                ImageView preview=new ImageView(context);preview.setScaleType(ImageView.ScaleType.CENTER_INSIDE);preview.setBackgroundColor(UiTokens.surfaceWell(dark));
                 try{preview.setImageDrawable(context.getPackageManager().getApplicationIcon(w.packageName));}catch(Exception ignored){}
                 item.addView(preview,new LinearLayout.LayoutParams(dp(72),dp(72)));
-                TextView choose=new TextView(context);choose.setText(w.title==null?"Окно":w.title);choose.setGravity(Gravity.CENTER);choose.setTextColor(dark?0xfff5f5f5:0xff1a1a1a);item.addView(choose);
+                TextView choose=new TextView(context);choose.setText(w.title==null?"Окно":w.title);choose.setGravity(Gravity.CENTER);choose.setTextColor(UiTokens.textPrimary(dark));item.addView(choose);
                 item.setOnClickListener(v->{
                     // M-05: the group may have been dissolved while the Assist was open.
                     if(groups.get(group.id)!=group){dismissAssist();return;}
@@ -522,10 +522,10 @@ public final class SnapController {
                 });
                 card.addView(item);
             }
-            Button cancel=new Button(context);cancel.setText("Закрыть");cancel.setAllCaps(false);cancel.setTextColor(dark?Color.WHITE:0xff1a1a1a);
-            GradientDrawable cancelBg=new GradientDrawable();cancelBg.setColor(dark?0xff3a3a3a:0xffeeeeee);cancelBg.setCornerRadius(8);
-            GradientDrawable cancelHover=new GradientDrawable();cancelHover.setColor(dark?0xff4a4a4a:0xffe5e5e5);cancelHover.setCornerRadius(8);
-            GradientDrawable cancelPressed=new GradientDrawable();cancelPressed.setColor(dark?0xff555555:0xffd8d8d8);cancelPressed.setCornerRadius(8);cancel.setBackground(cancelBg);
+            Button cancel=new Button(context);cancel.setText("Закрыть");cancel.setAllCaps(false);cancel.setTextColor(dark?UiTokens.textOnAccent():UiTokens.textPrimary(dark));
+            GradientDrawable cancelBg=new GradientDrawable();cancelBg.setColor(UiTokens.surfaceMuted(dark));cancelBg.setCornerRadius(UiTokens.RADIUS_MEDIUM);
+            GradientDrawable cancelHover=new GradientDrawable();cancelHover.setColor(UiTokens.surfaceHoverMuted(dark));cancelHover.setCornerRadius(UiTokens.RADIUS_MEDIUM);
+            GradientDrawable cancelPressed=new GradientDrawable();cancelPressed.setColor(UiTokens.surfacePressedMuted(dark));cancelPressed.setCornerRadius(UiTokens.RADIUS_MEDIUM);cancel.setBackground(cancelBg);
             cancel.setOnHoverListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_HOVER_ENTER||e.getActionMasked()==MotionEvent.ACTION_HOVER_MOVE)v.setBackground(cancelHover);else if(e.getActionMasked()==MotionEvent.ACTION_HOVER_EXIT)v.setBackground(cancelBg);return false;});
             cancel.setOnTouchListener((v,e)->{if(e.getActionMasked()==MotionEvent.ACTION_DOWN)v.setBackground(cancelPressed);else if(e.getActionMasked()==MotionEvent.ACTION_UP||e.getActionMasked()==MotionEvent.ACTION_CANCEL)v.setBackground(v.isHovered()?cancelHover:cancelBg);return false;});
             cancel.setOnClickListener(v->dismissAssist());root.addView(cardScroll);root.addView(cancel);
@@ -547,7 +547,7 @@ public final class SnapController {
     private final class LayoutPreview extends View {
         final Layout layout; final Paint paint=new Paint(3); final boolean dark;
         int hoverCell=-1,pressedCell=-1;
-        LayoutPreview(Context c,Layout l,boolean dark){super(c);layout=l;this.dark=dark;setBackgroundColor(dark?0xff202020:0xffeeeeee);setContentDescription("Макет Snap: "+l.name());}
+        LayoutPreview(Context c,Layout l,boolean dark){super(c);layout=l;this.dark=dark;setBackgroundColor(UiTokens.surfacePreview(dark));setContentDescription("Макет Snap: "+l.name());}
         int hitCell(float x,float y){
             float pad=dp(4),width=Math.max(1,getWidth()-2*pad),height=Math.max(1,getHeight()-2*pad);
             float nx=Math.max(0,Math.min(.9999f,(x-pad)/width)),ny=Math.max(0,Math.min(.9999f,(y-pad)/height));
@@ -566,9 +566,9 @@ public final class SnapController {
                 RectF cell=cells.get(i);float left=pad+cell.left*width+gap,top=pad+cell.top*height+gap;
                 float right=pad+cell.right*width-gap,bottom=pad+cell.bottom*height-gap;
                 boolean highlighted=i==(pressedCell>=0?pressedCell:hoverCell);
-                paint.setStyle(Paint.Style.FILL);paint.setColor(highlighted?(pressedCell>=0?0xff005a9e:0xff0067c0):(dark?0xff444444:0xffdddddd));
+                paint.setStyle(Paint.Style.FILL);paint.setColor(highlighted?(pressedCell>=0?UiTokens.accentPressed(false):UiTokens.accentLight()):UiTokens.surfaceCellIdle(dark));
                 canvas.drawRect(left,top,right,bottom,paint);
-                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(dp(1));paint.setColor(dark?0xff666666:0xffb7b7b7);
+                paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(dp(1));paint.setColor(UiTokens.outlineMuted(dark));
                 canvas.drawRect(left,top,right,bottom,paint);
             }
             paint.setStyle(Paint.Style.FILL);
@@ -576,7 +576,7 @@ public final class SnapController {
     }
     private final class DividerView extends View {
         final Paint p=new Paint(3); boolean active; final boolean dark;
-        DividerView(Context c,boolean d){super(c);dark=d;setBackgroundColor(dark?0xff292929:0xfff4f4f4);}
-        @Override protected void onDraw(Canvas c){super.onDraw(c);if(!active)return;p.setColor(dark?0xff0097ff:0xff0067c0);if(getWidth()>getHeight())c.drawRect(0,getHeight()/2f-dp(1),getWidth(),getHeight()/2f+dp(1),p);else c.drawRect(getWidth()/2f-dp(1),0,getWidth()/2f+dp(1),getHeight(),p);}
+        DividerView(Context c,boolean d){super(c);dark=d;setBackgroundColor(UiTokens.surfaceCard(d));}
+        @Override protected void onDraw(Canvas c){super.onDraw(c);if(!active)return;p.setColor(UiTokens.accent(dark));if(getWidth()>getHeight())c.drawRect(0,getHeight()/2f-dp(1),getWidth(),getHeight()/2f+dp(1),p);else c.drawRect(getWidth()/2f-dp(1),0,getWidth()/2f+dp(1),getHeight(),p);}
     }
 }

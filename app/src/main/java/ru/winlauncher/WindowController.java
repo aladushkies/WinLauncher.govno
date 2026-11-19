@@ -79,6 +79,7 @@ public final class WindowController {
     private int screenHeight;
     private int statusInsetPx = 24;
     private int taskbarHeight = 48;
+    private SystemInsets insets = SystemInsets.empty();
     private boolean hideStatusBar = true;
     private boolean statusConfigured;
     private boolean monitoring;
@@ -186,6 +187,11 @@ public final class WindowController {
         screenWidth = dm.widthPixels;
         screenHeight = dm.heightPixels;
         statusInsetPx = statusBarHeight(); // D-06: real device inset, not a hardcoded 24 px
+        // K-03: the navigation bar and the display cutout join the status bar, so every
+        // absolutely positioned overlay can be anchored against the real safe area.
+        SystemInsets measured = SystemInsets.read(context, display);
+        insets = new SystemInsets(statusInsetPx, measured.navigationBar, measured.cutoutTop,
+                measured.cutoutBottom, measured.cutoutLeft, measured.cutoutRight);
         generation++;
         if(snapController!=null&&sizeChanged)snapController.displayChanged(orientationChanged);
         if(dockedPair!=null)dockedPair.onDisplayChanged();
@@ -200,8 +206,24 @@ public final class WindowController {
 
     public Rect workArea() {
         int top = hideStatusBar ? 0 : statusInsetPx;
-        return new Rect(0, top, screenWidth, Math.max(top, screenHeight - taskbarHeight));
+        // K-03: the work area leaves room for the status bar, the display cutout and the
+        // navigation bar; the taskbar sits on top of the navigation bar, so both are
+        // subtracted from the bottom edge.
+        int safeTop = Math.max(top, insets.cutoutTop);
+        int safeBottom = Math.max(safeTop, screenHeight - taskbarHeight - insets.bottom());
+        int safeLeft = insets.left();
+        int safeRight = Math.max(safeLeft, screenWidth - insets.right());
+        return new Rect(safeLeft, safeTop, safeRight, safeBottom);
     }
+
+    /** The insets of the default display: system bars and display cutout. */
+    public SystemInsets insets() { return insets; }
+    /** The inset that top-anchored overlays must leave free (status bar or cutout). */
+    public int topInset() { return insets.top(hideStatusBar); }
+    /** The inset that bottom-anchored overlays must leave free (navigation bar or cutout). */
+    public int bottomInset() { return insets.bottom(); }
+    /** The inset that right-anchored overlays must leave free (display cutout). */
+    public int rightInset() { return insets.right(); }
 
     private int statusBarHeight() {
         int id = context.getResources().getIdentifier("status_bar_height", "dimen", "android");
