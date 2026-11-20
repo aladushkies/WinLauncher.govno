@@ -62,6 +62,8 @@ Launcher-owned overlays используют сплошные цвета и `Pix
 
 Нужны Android Studio, JDK 17, Android SDK Platform 35 и установленный Gradle 8.7+ (совместимый с Android Gradle Plugin 8.6.1). Gradle wrapper в исходниках не включён. Сборка `gradle :app:assembleDebug` в этом окружении не выполнялась — Android SDK и Gradle здесь отсутствуют.
 
+Пошаговая инструкция для сборки из готового ZIP-архива (включая `local.properties`/`ANDROID_HOME`, установку на устройство и предполётные проверки) — в `BUILD.md`.
+
 ```sh
 gradle :app:assembleDebug
 ```
