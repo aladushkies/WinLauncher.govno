@@ -126,7 +126,19 @@ public final class MainActivity extends Activity {
     }
 
     private void ensureController() {
-        if (controller != null && windowsListener != null) return;
+        // L-06: DockService can be restarted and replace the retained controller. The old
+        // early return made the rebind below unreachable, so the Activity kept a controller
+        // whose bridge was already closed and never learned about the live one.
+        WindowController serviceController = DockService.controller();
+        boolean stale = controller != null && serviceController != null && serviceController != controller;
+        if (controller != null && windowsListener != null && !stale) return;
+        if (stale) {
+            controller.removeListener(windowsListener);
+            controller.setErrorListener(null);
+            controller = null;
+            windowsListener = null;
+            errorListener = null;
+        }
         if (controller == null) {
             controller = DockService.controller();
             if (controller != null) {
@@ -135,6 +147,8 @@ public final class MainActivity extends Activity {
                 taskbar = DockService.taskbar();
                 taskView = DockService.taskView();
                 fullscreenEdges = DockService.edges();
+                // L-06: re-assert the static registration of the controller we bind to.
+                controller.claimActive();
             } else {
                 controller = new WindowController(getApplicationContext(), ensureBridge());
                 chrome = new ChromeManager(getApplicationContext(), controller);

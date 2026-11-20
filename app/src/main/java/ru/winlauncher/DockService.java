@@ -40,6 +40,10 @@ public final class DockService extends Service {
     public static void keepAlive(Context context,RootBridge bridge,WindowController controller,ChromeManager chrome,
                                  TaskbarOverlay taskbar,TaskViewOverlay taskView,FullscreenEdgeManager edges){
         keptBridge=bridge;keptController=controller;keptChrome=chrome;keptTaskbar=taskbar;keptTaskView=taskView;keptEdges=edges;
+        // L-06: the service owns the controller, so it also owns the static registration that
+        // KeyService, ActionCenterOverlay and LauncherSettingsActivity read. The registration
+        // has to be re-asserted on every binding, not only in the controller constructor.
+        if(controller!=null)controller.claimActive();
         Intent i=new Intent(context.getApplicationContext(),DockService.class);
         if(Build.VERSION.SDK_INT>=26)context.getApplicationContext().startForegroundService(i);
         else context.getApplicationContext().startService(i);

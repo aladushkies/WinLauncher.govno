@@ -46,6 +46,10 @@ public final class WindowController {
     public static final int DOCKED_STACK_ID=3;
     private static volatile WindowController activeController;
     public static WindowController active() { return activeController; }
+    // L-06: a controller that an owner released must not be handed out again, and the
+    // static registration has to be restorable: the retained DockService controller
+    // survives an Activity recreation, so it re-registers itself when it is bound again.
+    private boolean released;
 
     public interface Listener { void onWindowsChanged(List<Win> windows); }
     public interface Result { void onResult(boolean ok, String message); }
@@ -83,6 +87,9 @@ public final class WindowController {
     private boolean hideStatusBar = true;
     private boolean statusConfigured;
     private boolean monitoring;
+    // L-04: the in-flight guard for the snapshot request and the callers that joined it.
+    private volatile boolean snapshotInFlight;
+    private final List<Result> snapshotWaiters = new ArrayList<>();
     private boolean initialized;
     private boolean restoringSnapGroup;
     private long generation;
@@ -113,6 +120,7 @@ public final class WindowController {
         this.freeformStackId = freeformStackId;
         this.fullscreenStackId = fullscreenStackId;
         activeController = this;
+        released = false;
         updateDisplayGeometry();
         snapController = new SnapController(this.context, this);
         dockedPair = new DockedPairManager(this.context,this);
@@ -342,7 +350,10 @@ public final class WindowController {
                 restoreVirtualDesktopMember(w,hidden);
             }
         }
-        prefs.setVirtualDesktopHiddenTasks(hidden);
+        // L-05: the hidden set was written back on every poll (every 750 ms) even when it did
+        // not change, so the preferences file was rewritten continuously. Only a real change
+        // is stored now.
+        if(!hidden.equals(prefs.virtualDesktopHiddenTasks()))prefs.setVirtualDesktopHiddenTasks(hidden);
         if(leaveDockedPair)scheduleDockedPairHideForInactiveDesktop();
     }
     private void scheduleDockedPairHideForInactiveDesktop(){
@@ -432,7 +443,15 @@ public final class WindowController {
         w.snapGroupId=groupId; w.snapCell=cell;
         moveToStackThenResize(w, freeformStackId, true, clamp(bounds), Win.State.SNAPPED, null);
     }
-    public void releaseActive() { if(activeController==this)activeController=null;if(snapController!=null)snapController.releaseActive();if(dockedPair!=null)dockedPair.release(); }
+    public void releaseActive() { released=true;if(activeController==this)activeController=null;if(snapController!=null)snapController.releaseActive();if(dockedPair!=null)dockedPair.release(); }
+    /**
+     * L-06: the static registration used to be written only in the constructor. A controller
+     * that was retained by DockService and survived an Activity recreation therefore lost its
+     * registration as soon as any owner released it, and the static consumers
+     * (KeyService, ActionCenterOverlay, LauncherSettingsActivity) silently fell back to
+     * "no controller". The owner that binds the controller re-asserts the registration.
+     */
+    public void claimActive() { if(!released)activeController=this; }
     public Win focusedWindow() {
         Win full=null,desktop=null;
         for (Win w : windows.values()) if (w.visible && w.state!=Win.State.MINIMIZED) {
@@ -477,17 +496,37 @@ public final class WindowController {
     }
 
     public void refreshTasks(Result callback) {
+        // L-04: at most one snapshot request may be in flight. The 750 ms poll used to start a
+        // new "tasks" request on every tick even while the previous one had not answered, so a
+        // slow RootServer accumulated one request per tick. A caller that arrives during a
+        // running snapshot joins it instead of adding another request.
+        if (snapshotInFlight) {
+            if (callback != null) {
+                synchronized (snapshotWaiters) { snapshotWaiters.add(callback); }
+            }
+            return;
+        }
+        snapshotInFlight = true;
         root.tasks(result -> {
+            List<Result> waiters;
+            synchronized (snapshotWaiters) { waiters = new ArrayList<>(snapshotWaiters); snapshotWaiters.clear(); }
+            snapshotInFlight = false;
             if (!result.optBoolean("ok", false)) {
-                if (callback != null) callback.onResult(false, result.optString("error", "tasks failed"));
+                String error = result.optString("error", "tasks failed");
+                if (callback != null) callback.onResult(false, error);
+                for (Result waiter : waiters) waiter.onResult(false, error);
                 return;
             }
             try {
                 JSONArray tasks = result.getJSONArray("tasks");
                 adoptTasks(tasks);
-                if (callback != null) callback.onResult(true, "Задач: " + tasks.length());
+                String message = "Задач: " + tasks.length();
+                if (callback != null) callback.onResult(true, message);
+                for (Result waiter : waiters) waiter.onResult(true, message);
             } catch (Exception e) {
-                if (callback != null) callback.onResult(false, "Некорректный ответ tasks: " + e.getMessage());
+                String error = "Некорректный ответ tasks: " + e.getMessage();
+                if (callback != null) callback.onResult(false, error);
+                for (Result waiter : waiters) waiter.onResult(false, error);
             }
         });
     }

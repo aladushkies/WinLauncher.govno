@@ -1036,6 +1036,60 @@ checks.append(check("K-05: SystemInsets reads the status bar, the navigation bar
     and "Build.VERSION.SDK_INT >= 28" in f_insets
     and "SystemInsets.read(context, display)" in f_window))
 
+# 21. Round L — bounded bridge queue, one snapshot in flight and the controller ownership.
+f_bridge = java("bridge/RootBridge")
+f_dock = java("DockService")
+f_main = java("MainActivity")
+f_keyservice = java("KeyService")
+f_settings = java("LauncherSettingsActivity")
+_reconcile_body = f_window.split("private void reconcileVirtualDesktopVisibility(){", 1)[1] \
+    .split("private void scheduleDockedPairHideForInactiveDesktop()", 1)[0]
+checks.append(check("L-01: the bridge queue is bounded and snapshot reads are coalesced instead of piling up",
+    "private static final int MAX_PENDING_REQUESTS = 64;" in f_bridge
+    and 'send("tasks", new JSONObject(), "tasks", callback, true);' in f_bridge
+    and "queue.size() >= MAX_PENDING_REQUESTS" in f_bridge
+    and "removeOldestMergeable()" in f_bridge
+    and 'error("dropped: request queue full")' in f_bridge
+    and 'if (rejected) deliverAll(request, error("request queue full"));' in f_bridge
+    and 'error("superseded by newer resize")' in f_bridge))
+checks.append(check("L-02: closing the bridge answers every pending caller instead of dropping the queue silently",
+    'deliverAll(request, error("bridge closed"));' in f_bridge
+    and "pending = new ArrayDeque<>(queue); queue.clear();" in f_bridge
+    and "deliverAll(r, execute(r));" in f_bridge))
+checks.append(check("L-03: a session the server closed while it was idle is dropped before a command is written into it",
+    "private static final long SESSION_IDLE_TIMEOUT_MS = 120000L;" in f_bridge
+    and "lastIoAt = SystemClock.elapsedRealtime();" in f_bridge
+    and "SystemClock.elapsedRealtime() - lastIoAt <= SESSION_IDLE_TIMEOUT_MS" in f_bridge
+    and "socket.setSoTimeout(120000);" in f_root_server))
+checks.append(check("L-04: at most one task snapshot is in flight; a late caller joins the running one",
+    "private volatile boolean snapshotInFlight;" in f_window
+    and "if (snapshotInFlight) {" in f_window
+    and "snapshotWaiters.add(callback);" in f_window
+    and "snapshotInFlight = false;" in f_window
+    and "for (Result waiter : waiters) waiter.onResult(true, message);" in f_window))
+checks.append(check("L-05: the virtual-desktop hidden set is written back only when it really changed",
+    "if(!hidden.equals(prefs.virtualDesktopHiddenTasks()))prefs.setVirtualDesktopHiddenTasks(hidden);" in _reconcile_body
+    and _reconcile_body.count("prefs.setVirtualDesktopHiddenTasks(hidden);") == 1))
+checks.append(check("L-06: the static controller registration is re-asserted by its owner and a replaced controller is rebound",
+    "public void claimActive() { if(!released)activeController=this; }" in f_window
+    and "released=true;if(activeController==this)activeController=null;" in f_window
+    and "if(controller!=null)controller.claimActive();" in f_dock
+    and "controller.claimActive();" in f_main
+    and "boolean stale = controller != null && serviceController != null && serviceController != controller;" in f_main
+    and "if (controller != null && windowsListener != null && !stale) return;" in f_main))
+checks.append(check("L-07: the static consumers are served by the registration after an Activity recreation",
+    "WindowController.active()" in f_keyservice
+    and "WindowController.active()" in f_actioncenter
+    and "WindowController.active()" in f_settings
+    and "controller=WindowController.active();" in f_taskmgr))
+checks.append(check("L-08: the retry contract is unchanged — only idempotent reads are repeated after a reconnect",
+    'boolean idempotent = "ping".equals(r.command) || "tasks".equals(r.command)' in f_bridge
+    and '|| "device_state".equals(r.command);' in f_bridge
+    and "if (attempt == 0 && idempotent) continue;" in f_bridge))
+checks.append(check("L-09: the resize supersede contract survives the queue rework",
+    '"superseded by newer resize".equals(result.optString("error"))' in f_window
+    and 'contains("superseded")) report(result, null);' in f_window))
+
 if not all(checks):
     sys.exit(1)
 print(f"{len(checks)}/{len(checks)} static source-coherence checks passed; not a Java build, APK test, or device/runtime acceptance.")

@@ -5,6 +5,7 @@ import android.net.LocalSocketAddress;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
+import android.os.SystemClock;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,15 +19,27 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** Persistent local-socket client. One worker serializes calls; queued resize requests coalesce. */
+/**
+ * Persistent local-socket client. One worker serializes calls; queued resize requests coalesce,
+ * pending snapshot reads are merged into one request, and the pending queue is bounded.
+ */
 public final class RootBridge implements Closeable {
     public interface Callback { void onResult(JSONObject result); }
 
     private static final int MAX_LINE = 512 * 1024;
     private static final int IO_TIMEOUT_MS = 4000; // S2: a hung RootServer must not stall the worker forever
+    // L-03: RootServer closes a session that stayed idle for 120 s (RootServer: setSoTimeout(120000)).
+    // A LocalSocket can still report itself connected after the peer closed the session, so the
+    // client drops such a socket on its own instead of writing a command into a dead session.
+    private static final long SESSION_IDLE_TIMEOUT_MS = 120000L;
+    // L-01: the pending queue is bounded. The 750 ms task poll used to enqueue one snapshot
+    // request per tick; against an unresponsive RootServer the queue grew without bound.
+    private static final int MAX_PENDING_REQUESTS = 64;
     private final String socketName;
     private final String token;
     private final int uid;
@@ -40,6 +53,7 @@ public final class RootBridge implements Closeable {
     private volatile LocalSocket socket;
     private volatile BufferedReader reader;
     private volatile BufferedWriter writer;
+    private volatile long lastIoAt;
 
     public RootBridge(String token) {
         this.token = token;
@@ -51,7 +65,9 @@ public final class RootBridge implements Closeable {
     }
 
     public void ping(Callback callback) { send("ping", new JSONObject(), null, callback); }
-    public void tasks(Callback callback) { send("tasks", new JSONObject(), null, callback); }
+    // L-01: "tasks" is a snapshot read, so several pending snapshots can be merged into a
+    // single request instead of piling up in the queue one per 750 ms poll tick.
+    public void tasks(Callback callback) { send("tasks", new JSONObject(), "tasks", callback, true); }
     public void setStatusBarHidden(boolean hidden, Callback callback) {
         JSONObject p = new JSONObject(); try { p.put("hide", hidden); } catch (JSONException ignored) { }
         send("status", p, null, callback);
@@ -87,9 +103,29 @@ public final class RootBridge implements Closeable {
     }
 
     private void send(String command, JSONObject payload, String coalesceKey, Callback callback) {
+        send(command, payload, coalesceKey, callback, false);
+    }
+
+    /**
+     * L-01: the pending queue is bounded and snapshot reads are coalesced.
+     *
+     * <p>A request with a coalesce key replaces the queued request with the same key:
+     * <ul>
+     *   <li>a mergeable request (a snapshot read) hands its callbacks to the new request,
+     *       so every caller still receives an answer but only one request is sent;</li>
+     *   <li>a side-effecting request (a resize) supersedes the old one, which is answered
+     *       with the "superseded by newer resize" error it always got.</li>
+     * </ul>
+     * When the queue is full the oldest mergeable request is dropped, and the caller is
+     * told that its snapshot was dropped instead of the queue growing without bound.
+     */
+    private void send(String command, JSONObject payload, String coalesceKey, Callback callback, boolean mergeable) {
         if (closed) { deliver(callback, error("bridge closed")); return; }
         Request request = new Request(ids.getAndIncrement(), command, payload, coalesceKey, callback);
+        request.mergeable = mergeable;
         Request superseded = null;
+        Request dropped = null;
+        boolean rejected = false;
         synchronized (lock) {
             if (coalesceKey != null) {
                 Iterator<Request> it = queue.iterator();
@@ -98,11 +134,32 @@ public final class RootBridge implements Closeable {
                     if (coalesceKey.equals(old.coalesceKey)) { superseded = old; it.remove(); break; }
                 }
             }
-            queue.addLast(request);
+            if (superseded != null && superseded.mergeable) {
+                // The old snapshot has not been sent yet: the new one answers for both.
+                request.callbacks.addAll(superseded.callbacks);
+                superseded = null;
+            }
+            if (queue.size() >= MAX_PENDING_REQUESTS) {
+                dropped = removeOldestMergeable();
+                if (dropped == null) rejected = true;
+            }
+            if (!rejected) queue.addLast(request);
         }
-        if (superseded != null) deliver(superseded.callback, error("superseded by newer resize"));
+        if (superseded != null) deliverAll(superseded, error("superseded by newer resize"));
+        if (dropped != null) deliverAll(dropped, error("dropped: request queue full"));
+        // A rejected request still answers every caller that joined it.
+        if (rejected) deliverAll(request, error("request queue full"));
         worker.removeCallbacks(drain);
         worker.post(drain);
+    }
+
+    /** Removes the oldest queued snapshot request so that the queue stays bounded. */
+    private Request removeOldestMergeable() {
+        for (Iterator<Request> it = queue.iterator(); it.hasNext();) {
+            Request candidate = it.next();
+            if (candidate.mergeable) { it.remove(); return candidate; }
+        }
+        return null;
     }
 
     private final Runnable drain = new Runnable() {
@@ -111,7 +168,7 @@ public final class RootBridge implements Closeable {
                 Request r;
                 synchronized (lock) { r = queue.pollFirst(); }
                 if (r == null) return;
-                deliver(r.callback, execute(r));
+                deliverAll(r, execute(r));
             }
         }
     };
@@ -133,6 +190,7 @@ public final class RootBridge implements Closeable {
                     String k = it.next(); wire.put(k, r.payload.get(k));
                 }
                 writer.write(wire.toString()); writer.write('\n'); writer.flush();
+                lastIoAt = SystemClock.elapsedRealtime();
                 JSONObject parsed = null;
                 for (int skipped = 0; skipped < 4; skipped++) {
                     String line = readLine(reader);
@@ -158,7 +216,14 @@ public final class RootBridge implements Closeable {
     }
 
     private void ensureConnected() throws Exception {
-        if (socket != null && socket.isConnected()) return;
+        if (socket != null && socket.isConnected()) {
+            // L-03: RootServer closes a session that stayed idle for 120 s, but a LocalSocket
+            // can still report itself connected after the peer closed the session. A command
+            // written into that socket is lost, and a side-effecting command is never retried.
+            // Drop the stale session and reconnect instead.
+            if (SystemClock.elapsedRealtime() - lastIoAt <= SESSION_IDLE_TIMEOUT_MS) return;
+            disconnect();
+        }
         LocalSocket s = new LocalSocket();
         BufferedReader in;
         BufferedWriter out;
@@ -188,6 +253,7 @@ public final class RootBridge implements Closeable {
             throw new IOException(String.valueOf(t));
         }
         socket = s; reader = in; writer = out;
+        lastIoAt = SystemClock.elapsedRealtime();
     }
 
     // BUG-04: S15 originally used one shared H(token:nonce) in both directions, so any process
@@ -242,6 +308,10 @@ public final class RootBridge implements Closeable {
     private void deliver(Callback callback, JSONObject value) {
         if (callback != null) main.post(() -> callback.onResult(value));
     }
+    /** L-01: a merged request answers every caller that joined it. */
+    private void deliverAll(Request request, JSONObject value) {
+        for (Callback callback : request.callbacks) deliver(callback, value);
+    }
     private static JSONObject error(String s) {
         try { return new JSONObject().put("ok", false).put("error", s == null ? "unknown error" : s); }
         catch (JSONException e) { return new JSONObject(); }
@@ -252,14 +322,21 @@ public final class RootBridge implements Closeable {
     }
     @Override public void close() {
         closed = true;
-        synchronized (lock) { queue.clear(); }
+        ArrayDeque<Request> pending;
+        synchronized (lock) { pending = new ArrayDeque<>(queue); queue.clear(); }
+        // L-02: the pending queue used to be cleared without answering the callers, so a
+        // caller that waited for a result (a task refresh, a resize) never heard back.
+        for (Request request : pending) deliverAll(request, error("bridge closed"));
         disconnect();
         thread.quitSafely();
     }
     private static final class Request {
-        final long id; final String command; final JSONObject payload; final String coalesceKey; final Callback callback;
+        final long id; final String command; final JSONObject payload; final String coalesceKey;
+        final List<Callback> callbacks = new ArrayList<>();
+        boolean mergeable;
         Request(long id, String c, JSONObject p, String key, Callback cb) {
-            this.id = id; command = c; payload = p; coalesceKey = key; callback = cb;
+            this.id = id; command = c; payload = p; coalesceKey = key;
+            if (cb != null) callbacks.add(cb);
         }
     }
 }

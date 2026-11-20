@@ -10,7 +10,7 @@
 - **APK не собран, устройство и runtime не проверены.** Android SDK/Gradle в этом окружении отсутствуют.
 - `TEST_PLAN.md` задаёт действия, ожидаемые результаты и Pass/Fail; сейчас все device/runtime cases остаются Not run. `DEVICE_CHECKLIST.md` — ручной чек-лист планшета.
 - Signing key не поставляется. Samsung/Android Installer принимает корректную подпись APK, но подписывать приложение Samsung production certificate проект не умеет и не заявляет.
-- Последний построчный дебаг — раунд J: `docs/history/JFIXES.md` (дефекты J‑01…J‑08, чистка репозитория). Раунд K — централизация UI: `docs/history/KFIXES.md` (токены `UiTokens`, touch targets 48 dp, inset-модель `SystemInsets`). История более ранних раундов: `docs/history/`.
+- Последний построчный дебаг — раунд J: `docs/history/JFIXES.md` (дефекты J‑01…J‑08, чистка репозитория). Раунд K — централизация UI: `docs/history/KFIXES.md` (токены `UiTokens`, touch targets 48 dp, inset-модель `SystemInsets`). Раунд L — жизненный цикл моста и владение контроллером: `docs/history/LFIXES.md` (ограниченная очередь `RootBridge`, слияние снапшотов, один snapshot в полёте, idle-сессия 120 с, явная регистрация активного контроллера). История более ранних раундов: `docs/history/`.
 
 ## Что есть в исходниках
 
@@ -78,7 +78,7 @@ ANDROID_JAR=$ANDROID_HOME/platforms/android-35/android.jar JAVA_HOME=/path/to/jd
 ## Проверки
 
 ```sh
-python3 tools/verify_quality.py     # 169 статических проверок + пункт J-09 (реальная компиляция)
+python3 tools/verify_quality.py     # 183 статических проверок + пункт J-09 (реальная компиляция)
 python3 tools/compile_check.py      # только компиляция (PASS / SKIP / FAIL)
 python3 tools/make_release.py       # собрать архив исходников и напечатать SHA-256
 ```
